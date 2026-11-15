@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ascend Face Scan</title>
+<meta name="description" content="Rate your face from 0 to 10 with facial ratio science and get a plan to improve.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ascend">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#C9481A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column like a lab report on a phone; the photo with caliper lines is the hero once a scan exists. */
+:root{
+  --bg:#EEF0F3; --surface:#FFFFFF; --fg:#151920; --muted:#5B6472; --line:#D5DAE1;
+  --accent:#C9481A; --accent-soft:#F6E1D8;
+  --good:#1F7A4D; --warn:#A86A00; --bad:#B3261E;
+  --display:"Manrope",system-ui,sans-serif; --body:"Inter",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1216; --surface:#181C22; --fg:#E7EAEE; --muted:#9AA3AF; --line:#2A3039;
+  --accent:#FF7B47; --accent-soft:#3A2419; --good:#4CC38A; --warn:#E0A63A; --bad:#FF6B5E; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1216; --surface:#181C22; --fg:#E7EAEE; --muted:#9AA3AF; --line:#2A3039;
+  --accent:#FF7B47; --accent-soft:#3A2419; --good:#4CC38A; --warn:#E0A63A; --bad:#FF6B5E; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+main{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:1.9rem;font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.3rem;font-weight:700}
+h3{font-size:1.02rem;font-weight:700}
+p{margin:0}
+.lead{color:var(--muted);max-width:60ch}
+header{display:flex;flex-direction:column;gap:8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 15px var(--body);padding:12px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:46px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;flex:1 1 200px;justify-content:center}
+.btn:focus-visible,.seg button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn[disabled]{opacity:.55;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:600 14px var(--body);padding:10px 16px;cursor:pointer;min-height:42px}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--fg)}
+.tips{margin:0;padding-left:18px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.status{font-size:14px;color:var(--muted)}
+.status.err{color:var(--bad)}
+canvas#view{width:100%;height:auto;border-radius:12px;display:block;background:var(--line)}
+.score{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.big{font:800 4.2rem/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.big small{font-size:1.4rem;color:var(--muted);font-weight:700}
+.tier{font:700 1.1rem var(--display);padding-bottom:10px}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:grid;grid-template-columns:minmax(0,9.5rem) minmax(0,1fr) 2.6rem;gap:10px;align-items:center;font-size:14px}
+.track{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.fill{height:100%;background:var(--accent)}
+.num{font:500 14px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.warnbox{border-left:3px solid var(--warn);padding:8px 12px;background:var(--accent-soft);border-radius:0 8px 8px 0;font-size:14px}
+details.f{border-top:1px solid var(--line);padding-block:12px}
+details.f:first-of-type{border-top:0}
+details.f summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+details.f summary::-webkit-details-marker{display:none}
+.chip{font:600 12px var(--body);padding:3px 9px;border-radius:99px;white-space:nowrap}
+.chip.good{color:var(--good);border:1px solid currentColor}
+.chip.warn{color:var(--warn);border:1px solid currentColor}
+.chip.bad{color:var(--bad);border:1px solid currentColor}
+.fbody{display:flex;flex-direction:column;gap:8px;padding-top:10px;font-size:14px}
+.meas{font:500 13px var(--mono);color:var(--muted)}
+.fbody ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.src{font-size:12.5px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:440px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted)}
+td.m{font-family:var(--mono);white-space:nowrap}
+.ai{display:flex;flex-direction:column;gap:12px}
+.aicard{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.aicard:first-child{border-top:0;padding-top:0}
+.aihead{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.note{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .6s ease}}
+</style>
+
+<main>
+  <header>
+    <h1>Ascend Face Scan</h1>
+    <p class="lead">Take a selfie. The app maps 478 points on your face, measures the proportions that attractiveness research links to beauty, rates you from 0 to 10, and tells you what to improve first.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="cap-h">
+    <h2 id="cap-h">Your photo</h2>
+    <div class="row" style="align-items:center">
+      <span class="note">Ideals for</span>
+      <div class="seg" role="group" aria-label="Sex for ideal ranges">
+        <button type="button" id="sexM" aria-pressed="true">Male</button>
+        <button type="button" id="sexF" aria-pressed="false">Female</button>
+      </div>
+    </div>
+    <div class="row">
+      <label class="btn primary" for="camIn">Take a selfie</label>
+      <input id="camIn" type="file" accept="image/*" capture="user" hidden>
+      <label class="btn" for="fileIn">Choose a photo</label>
+      <input id="fileIn" type="file" accept="image/*" hidden>
+    </div>
+    <ul class="tips">
+      <li>Look straight at the lens, phone at eye level, arm fully out.</li>
+      <li>Neutral face, mouth closed, no smile, no glasses.</li>
+      <li>Even light from the front (face a window). No beauty filter.</li>
+      <li>Hair off the forehead if you want the hairline measured.</li>
+    </ul>
+    <p class="status" id="status" role="status">The face model loads on your first photo. The photo stays on your phone.</p>
+  </section>
+
+  <section id="results" hidden aria-labelledby="res-h" style="display:flex;flex-direction:column;gap:28px">
+    <canvas id="view" aria-label="Your photo with measurement lines"></canvas>
+    <div class="panel">
+      <h2 id="res-h">Your rating</h2>
+      <div class="score"><div class="big" id="bigScore">0<small>/10</small></div><div class="tier" id="tier"></div></div>
+      <div id="warns" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="bars" id="bars"></div>
+      <p class="note" id="scoreNote"></p>
+    </div>
+
+    <div class="panel" id="aiPanel" hidden>
+      <h2>Hair, brows, lashes and skin up close</h2>
+      <p class="note">Geometry can't judge hair style, lash length or skin the way an eye can. Send this photo to Claude for a visual review; it uses your Claude usage and folds into your rating.</p>
+      <div class="row"><button class="btn primary" type="button" id="aiBtn">Run visual review</button></div>
+      <div class="ai" id="aiOut"></div>
+    </div>
+
+    <div class="panel">
+      <h2>What to fix, worst first</h2>
+      <div id="findings"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="sci-h">
+    <h2 id="sci-h">What gets measured</h2>
+    <p class="note">Ideal values are calibrated to MediaPipe's averaged face mesh (averageness itself predicts attractiveness, Langlois &amp; Roggman 1990), then shifted where studies show attractive faces differ from average. Measurements explain part of attractiveness, not all of it; treat the rating as a guide.</p>
+    <div class="tablewrap"><table id="sciTable"><thead><tr><th>Measure</th><th>Ideal (M)</th><th>Ideal (F)</th><th>Source</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="body-h">
+    <h2 id="body-h">Beyond the face</h2>
+    <ul class="tips" style="color:var(--fg);gap:8px">
+      <li><b>Body fat.</b> Facial adiposity is one of the strongest cues people read (Coetzee et al. 2009). Getting lean sharpens the jaw, cheekbones and eye area more than any trick.</li>
+      <li><b>Posture.</b> Forward head posture hides the jaw and adds a double chin. Chin tucks, upper-back rows, and a screen at eye level.</li>
+      <li><b>Teeth.</b> White, aligned teeth raise smile ratings. Whitening strips, retainer or aligners if crowded.</li>
+      <li><b>Sleep and water.</b> Sleep-deprived faces are rated less attractive and less healthy (Axelsson et al. 2010).</li>
+      <li><b>Style.</b> Clothes that fit your shoulders and waist, colors that contrast your skin and hair, a haircut every 4 to 6 weeks.</li>
+      <li><b>Skip.</b> Bone smashing, DIY fillers, unverified pills and tanning beds. They cause damage that no rating is worth.</li>
+    </ul>
+  </section>
+</main>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver } from "./vision_bundle.mjs";
+
+const $ = id => document.getElementById(id);
+let sex = "M", last = null;
+try { if (localStorage.getItem("afs-sex") === "F") sex = "F"; } catch {}
+function setSex(s){ sex = s; $("sexM").setAttribute("aria-pressed", s==="M"); $("sexF").setAttribute("aria-pressed", s==="F");
+  try{localStorage.setItem("afs-sex", s)}catch{} if (last) render(); }
+$("sexM").onclick = () => setSex("M"); $("sexF").onclick = () => setSex("F");
+setSex(sex);
+
+/* ---------- metric definitions: ideal per sex, tolerance below/above, weight, advice ---------- */
+const M = {
+  sym:{name:"Facial symmetry",fmt:v=>(v*100).toFixed(1)+"% off",ideal:{M:0,F:0},tl:.04,th:.04,w:2,grp:"sym",
+    src:"Grammer & Thornhill 1994; Rhodes 2006 meta-analysis",
+    what:"How closely the left half of your face mirrors the right, measured across 16 landmark pairs.",
+    high:["Retake with your head perfectly straight first: a few degrees of turn reads as asymmetry.","Chew evenly on both sides and alternate the side you sleep on, or sleep on your back.","Shape brows so both sit at the same height; part your hair on the side that balances the heavier half.","Men: trim the beard slightly fuller on the weaker jaw side.","A shifted bite or uneven jaw is worth an orthodontist check."]},
+  eyeSp:{name:"Eye spacing vs face width",fmt:v=>v.toFixed(3),ideal:{M:.425,F:.43},tl:.022,th:.022,w:1.4,grp:"prop",
+    src:"Pallett, Link & Lee 2010, the 46% interpupillary ratio",
+    what:"Distance between pupils divided by face width. Attractive faces cluster tightly around one value.",
+    low:["Your face reads wide for your eye spacing. Lowering body fat narrows the face more than anything else.","Haircut: volume on top, tight on the sides; avoid wide, puffy sides.","Groom brows so the gap between them stays clear; extend the outer tails slightly.","Women: wing or smoke the outer third of the eye to visually widen spacing."],
+    high:["Your eyes read wide-set for your face width. Side volume in the haircut and a fuller beard widen the lower face.","Fill brows slightly closer to the nose bridge.","Women: inner-corner liner or shadow brings the eyes visually closer."]},
+  eyeMo:{name:"Eye to mouth distance",fmt:v=>v.toFixed(3),ideal:{M:.39,F:.385},tl:.028,th:.028,w:1,grp:"prop",
+    src:"Pallett, Link & Lee 2010, the 36% vertical ratio",
+    what:"Vertical eye-to-mouth distance as a share of face length.",
+    low:["Your features sit compact vertically. Men: a short chin beard adds lower length.","A haircut with height on top balances a compact middle."],
+    high:["Your midface reads long. Men: a mustache shortens it visually; keep the chin beard short.","Women: blush placed higher on the cheekbone and a fuller lip line shorten the midface."]},
+  thirds:{name:"Midface vs lower face",fmt:v=>v.toFixed(2),ideal:{M:.92,F:.97},tl:.1,th:.1,w:1.2,grp:"prop",
+    src:"Farkas neoclassical canons (equal facial thirds)",
+    what:"Brow-to-nose-base height against nose-base-to-chin height. Ideal faces split into near-equal thirds.",
+    low:["Your lower face is long. Men: keep the chin beard short and the sides fuller.","Women: contour just under the chin tip to shorten it."],
+    high:["Your lower face is short or the chin is recessed. Men: a chin beard or goatee adds length and projection.","Stand and sit with your head back over your shoulders; forward head posture shortens the chin.","A recessed chin with a bad bite: see an orthodontist or maxillofacial surgeon. Mewing has no solid evidence for adults."]},
+  lower:{name:"Upper lip vs chin",fmt:v=>v.toFixed(2),ideal:{M:.39,F:.41},tl:.07,th:.07,w:1,grp:"prop",
+    src:"Farkas canons, 1:2 upper lip to lower lip-and-chin",
+    what:"Nose base to mouth, against mouth to chin.",
+    low:["Your chin is long relative to the upper lip. Men: keep chin hair short; women: light contour on the chin tip."],
+    high:["Your philtrum reads long. Men: a mustache hides it.","Women: line the upper lip right on the edge and add gloss to the center to make it look fuller."]},
+  icd:{name:"Gap between the eyes",fmt:v=>v.toFixed(2),ideal:{M:1.43,F:1.43},tl:.14,th:.14,w:1,grp:"prop",
+    src:"Farkas canons, intercanthal width equals eye width",
+    what:"Space between the inner corners of the eyes divided by eye width.",
+    low:["Close-set eyes: keep the brow gap open, light shadow on the outer corners, nothing dark near the nose."],
+    high:["Wide-set eyes: fill brows a little toward the center; women: inner-corner liner."]},
+  nose:{name:"Nose width",fmt:v=>v.toFixed(2),ideal:{M:1.3,F:1.24},tl:.14,th:.14,w:1,grp:"prop",
+    src:"Farkas canons, nose width equals intercanthal width",
+    what:"Width of the nostrils against the gap between the eyes.",
+    low:["Your nose is narrow; that reads as refined. Nothing to fix."],
+    high:["Your nose reads wide. Strong brows and a defined jaw shift attention away from it.","Women: contour both sides of the nose bridge.","Permanent change is rhinoplasty; talk to a board-certified surgeon, not a forum."]},
+  mouth:{name:"Mouth width",fmt:v=>v.toFixed(2),ideal:{M:1.4,F:1.45},tl:.15,th:.2,w:.7,grp:"prop",
+    src:"Farkas canons, mouth width about 1.5 x nose width",
+    what:"Width of the mouth corners against nose width.",
+    low:["Small mouth for your nose. Keep lips moisturized; women: extend the liner a hair at the corners."],
+    high:["Wide mouth. It reads expressive; nothing to fix."]},
+  tilt:{name:"Canthal tilt",fmt:v=>v.toFixed(1)+"°",ideal:{M:5,F:6.5},tl:3,th:6,w:1.2,grp:"prop",
+    src:"Rhee et al. 2012; positive tilt rated more attractive",
+    what:"Angle from inner to outer eye corner. A slight upward tilt reads alert and attractive.",
+    low:["Your outer eye corners sit low. Sleep 7 to 9 hours and cut late salt and alcohol to reduce puffiness that drags corners down.","Shape brow tails so they lift toward the temple, never droop below the inner brow.","Women: wing liner upward from the outer corner; lift lashes with a curler.","Leaner face fat exposes the eye area. Surgical canthoplasty exists but carries real risk."],
+    high:["Strong upward tilt. That is a plus."]},
+  fwhr:{name:"Face width to height (fWHR)",fmt:v=>v.toFixed(2),ideal:{M:1.95,F:1.85},tl:.15,th:.2,w:1,grp:"prop",
+    src:"Carré & McCormick 2008; Stirrat & Perrett 2010",
+    what:"Cheekbone width over brow-to-upper-lip height. Higher reads more robust and masculine.",
+    low:["Your face reads long and narrow. Haircut with side volume and less height on top.","Men: grow the beard fuller on the sides of the jaw.","Training the neck and traps frames a narrow face better."],
+    high:["Your face reads wide. Height on top of the haircut and slimmer sides lengthen it.","Women: long layers and a slight side part."]},
+  jaw:{name:"Jaw width",fmt:v=>v.toFixed(2),ideal:{M:.81,F:.76},tl:.045,th:.06,w:1.2,grp:"prop",
+    src:"Dimorphism studies (Little et al. 2011); bigonial vs bizygomatic width",
+    what:"Width at the jaw angles divided by cheekbone width.",
+    low:["Your jaw reads narrow. Get lean (about 12 to 15% body fat for men) so the jaw angle shows.","Men: a short boxed beard squares the jaw line.","Fix forward head posture; it blurs the jaw and neck line.","Harder chewing (sugar-free gum) can build the masseter slightly; evidence is thin, stop if your jaw clicks or aches."],
+    high:["Your jaw reads wide. For men that is a strength.","Women: face-framing layers at jaw level and contour under the jaw angles soften it."]},
+  lipR:{name:"Lower vs upper lip",fmt:v=>v.toFixed(2),ideal:{M:1.5,F:1.55},tl:.35,th:.5,w:.6,grp:"feat",
+    src:"Penna et al. 2015; Popenko et al. 2017, ideal ratio near 1:1.6",
+    what:"Lower lip height over upper lip height.",
+    low:["Your upper lip is full relative to the lower. Women: a lighter shade on the upper lip, gloss on the lower."],
+    high:["Your upper lip is thin relative to the lower. Exfoliate and moisturize; women: line the upper edge precisely."]},
+  lipF:{name:"Lip fullness",fmt:v=>v.toFixed(2),ideal:{M:.25,F:.29},tl:.06,th:.08,w:.8,grp:"feat",
+    src:"Popenko et al. 2017; lip fullness and femininity",
+    what:"Total lip height over mouth width.",
+    low:["Thin lips. Lip balm with SPF daily, gentle exfoliation, no smoking.","Women: liner just on the outer edge plus gloss. Fillers are an option with a qualified injector."],
+    high:["Full lips. A plus for most people."]},
+  brow:{name:"Brow height",fmt:v=>v.toFixed(2),ideal:{M:.62,F:.76},tl:.12,th:.12,w:.8,grp:"feat",
+    src:"Facial dimorphism: lower brows read masculine, higher brows feminine (Campbell et al. 1999)",
+    what:"Gap from the brow to the upper eyelid, relative to eye width.",
+    low:["Your brows sit low. For men that reads intense, which is good; for women, tweeze only the lower edge and try brow lamination for lift."],
+    high:["Your brows sit high. Men: stop plucking the lower edge and let it grow 8 to 12 weeks; a fuller lower line lowers the brow visually.","Women: this reads feminine and open."]},
+  eyeO:{name:"Eye openness",fmt:v=>v.toFixed(2),ideal:{M:.25,F:.29},tl:.045,th:.05,w:.8,grp:"feat",
+    src:"Eye size and femininity (Cunningham 1986); narrower eyes read masculine",
+    what:"Eye height over eye width.",
+    low:["Narrow or hooded eyes. Reduce puffiness: sleep, less late salt, cold compress in the morning.","Women: curl lashes, tightline the upper lid, keep shadow on the crease."],
+    high:["Round open eyes. For women a plus; men can let brows grow fuller to frame them."]},
+  shape:{name:"Face length vs width",fmt:v=>v.toFixed(2),ideal:{M:1.22,F:1.24},tl:.09,th:.09,w:.8,grp:"prop",
+    src:"Oval face proportion; Farkas anthropometry",
+    what:"Forehead-top-to-chin length over cheekbone width.",
+    low:["Round or short face. Lower body fat, height on top of the haircut, a chin beard for men."],
+    high:["Long face. Side volume, a fringe, no tall quiff; men keep the chin beard short."]},
+  upper:{name:"Forehead height",fmt:v=>v.toFixed(2),ideal:{M:1.0,F:.97},tl:.15,th:.15,w:.8,grp:"hair",
+    src:"Farkas canons, upper third equals middle third",
+    what:"Hairline-to-brow height against brow-to-nose-base height. Hairline found by color edge, so it is an estimate.",
+    low:["Low hairline. Swept-back or textured styles that show some forehead balance it."],
+    high:["High hairline or large forehead. A fringe, textured crop or side-swept front shortens it.","Check the temples for recession. If it is thinning, see a doctor early: finasteride and minoxidil have the best evidence."]},
+  browD:{name:"Brow density",fmt:v=>v.toFixed(2),ideal:{M:.55,F:.6},lin:[.55,.92],w:1,grp:"hair",
+    src:"Facial contrast (Russell 2009); brow thickness and dimorphism",
+    what:"How dark your brows are against the forehead skin. Denser, darker brows add facial contrast.",
+    bad:["Let brows grow out untouched for 8 to 12 weeks, then shape.","Clear brow gel daily; tint every 4 to 6 weeks if they are light.","Women: fill sparse gaps with pencil strokes or pomade; lamination for fullness.","For thin brows, minoxidil on brows is used off-label; ask a dermatologist."]},
+  lash:{name:"Lash line",fmt:v=>v.toFixed(2),ideal:{M:.45,F:.45},lin:[.45,.85],w:.8,grp:"hair",
+    src:"Eye contrast and lash length preferences (Adam 2021; Russell 2009)",
+    what:"How dark the upper lash line is against the eyelid skin. Approximates lash density.",
+    bad:["Women: curl, then two coats of mascara; tightline the upper waterline.","Men: lash tint is a subtle, invisible-looking upgrade if lashes are light.","Bimatoprost (Latisse) is the only proven lash-growth drug and needs a prescription.","Remove makeup gently and stop rubbing your eyes; it breaks lashes."]},
+  under:{name:"Under-eye darkness",fmt:v=>v.toFixed(2),ideal:{M:.97,F:.97},lin:[.93,.62],w:.5,grp:"skin",
+    src:"Perceived health and fatigue cues (Sundelin et al. 2013)",
+    what:"Brightness under the eyes compared with the cheek.",
+    bad:["Sleep 7 to 9 hours on a fixed schedule.","Treat allergies; congestion darkens the under-eye.","Cold compress or caffeine eye gel in the morning; SPF and a retinol eye cream long term.","Concealer one shade lighter, with a peach corrector if the circles look blue."]},
+  lipC:{name:"Lip color",fmt:v=>v.toFixed(1),ideal:{M:12,F:12},lin:[12,2],w:.5,grp:"skin",
+    src:"Lip redness and attractiveness (Stephen & McKeegan 2010)",
+    what:"How much redder the lips are than the surrounding skin.",
+    bad:["Hydrate, exfoliate lips weekly, balm with SPF.","A tinted balm close to your natural lip color adds contrast without looking made up."]},
+  skin:{name:"Skin texture",fmt:v=>(v*100).toFixed(1),ideal:{M:.014,F:.012},lin:[.014,.05],w:1.6,grp:"skin",
+    src:"Skin homogeneity (Fink et al. 2001; Jones et al. 2004)",
+    what:"Fine-grain roughness on cheeks and forehead: pores, bumps, acne, scarring. Photo quality affects this.",
+    bad:["Morning: gentle cleanser, moisturizer, SPF 30 or more every day.","Night: a retinoid (adapalene or retinol) 2 to 3 nights a week, building up.","Acne: benzoyl peroxide wash plus adapalene; see a dermatologist if it scars.","Change pillowcases twice a week and keep hands off your face."]},
+  tone:{name:"Skin evenness",fmt:v=>(v*100).toFixed(1),ideal:{M:.03,F:.03},lin:[.03,.13],w:.6,grp:"skin",
+    src:"Skin color distribution (Fink et al. 2006)",
+    what:"How even the tone is between forehead and cheeks. Shadows and side light inflate it.",
+    bad:["Daily SPF stops patches from darkening further.","Vitamin C in the morning, azelaic acid or niacinamide for redness and dark spots.","Retake facing a window to rule out uneven light."]},
+};
+const GROUPS = {prop:"Proportions",sym:"Symmetry",feat:"Eyes, brows and lips",hair:"Hair and brows",skin:"Skin"};
+
+/* science table at rest */
+(function(){
+  const tb = $("sciTable").tBodies[0];
+  for (const [k,m] of Object.entries(M)) {
+    const tr = document.createElement("tr");
+    const f = v => m.lin ? "best near "+m.fmt(v) : m.fmt(v);
+    tr.innerHTML = `<td></td><td class="m"></td><td class="m"></td><td></td>`;
+    tr.cells[0].textContent = m.name; tr.cells[1].textContent = k==="sym"?"0%":f(m.ideal.M);
+    tr.cells[2].textContent = k==="sym"?"0%":f(m.ideal.F); tr.cells[3].textContent = m.src;
+    tb.append(tr);
+  }
+})();
+
+/* ---------- model ---------- */
+let landmarker = null;
+async function getModel(){
+  if (landmarker) return landmarker;
+  status("Loading the face model (about 13 MB, once)...");
+  const fileset = await FilesetResolver.forVisionTasks(new URL("./wasm", location.href).href);
+  const buf = new Uint8Array(await (await fetch("./model.wasm")).arrayBuffer());
+  landmarker = await FaceLandmarker.createFromOptions(fileset, {
+    baseOptions:{modelAssetBuffer:buf, delegate:"CPU"}, runningMode:"IMAGE", numFaces:1, outputFaceBlendshapes:true });
+  return landmarker;
+}
+function status(t, err){ const s=$("status"); s.textContent=t; s.classList.toggle("err",!!err); }
+
+/* ---------- color helpers ---------- */
+function lab(r,g,b){
+  const f=c=>{c/=255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4};
+  const R=f(r),G=f(g),B=f(b);
+  let x=(R*.4124+G*.3576+B*.1805)/.95047, y=R*.2126+G*.7152+B*.0722, z=(R*.0193+G*.1192+B*.9505)/1.08883;
+  const h=t=>t>.008856?Math.cbrt(t):7.787*t+16/116;
+  x=h(x);y=h(y);z=h(z); return [116*y-16,500*(x-y),200*(y-z)];
+}
+const dE=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+
+/* ---------- analysis ---------- */
+async function handleFile(file){
+  if (!file) return;
+  try {
+    const lmk = await getModel();
+    status("Mapping your face...");
+    const bmp = await createImageBitmap(file);
+    const s = Math.min(1, 1400/Math.max(bmp.width,bmp.height));
+    const c = document.createElement("canvas"); c.width=Math.round(bmp.width*s); c.height=Math.round(bmp.height*s);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    const out = lmk.detect(c);
+    if (!out.faceLandmarks?.length){ status("No face found. Retake with your whole face in frame and good light.", true); return; }
+    const res = analyze(c, out.faceLandmarks[0], out.faceBlendshapes?.[0]?.categories || []);
+    last = {canvas:c, res, ai:null};
+    render();
+    status("Done. Scroll down for your rating.");
+    $("results").hidden = false;
+    $("results").scrollIntoView({behavior:"smooth", block:"start"});
+  } catch(e){ console.error(e); status("The face model failed to load or run ("+(e.message||e)+"). Reload the page and try again.", true); }
+}
+$("camIn").onchange = e => { handleFile(e.target.files[0]); e.target.value=""; };
+$("fileIn").onchange = e => { handleFile(e.target.files[0]); e.target.value=""; };
+window.__analyzeFile = handleFile;
+
+function analyze(c, L, bs){
+  const W=c.width,H=c.height;
+  const P = L.map(p=>[p.x*W,p.y*H]);
+  const iR=P[468], iL=P[473];
+  let vx=iL[0]-iR[0], vy=iL[1]-iR[1]; if (vx<0){vx=-vx;vy=-vy;}
+  const th=Math.atan2(vy,vx), co=Math.cos(-th), si=Math.sin(-th);
+  const R = P.map(([x,y])=>[x*co-y*si, x*si+y*co]);
+  const dist=(a,b)=>Math.hypot(R[a][0]-R[b][0],R[a][1]-R[b][1]);
+  const vy_=(a,b)=>Math.abs(R[a][1]-R[b][1]);
+  const ew=(dist(33,133)+dist(362,263))/2, fw=dist(234,454);
+  const mid=(a,b)=>[(R[a][0]+R[b][0])/2,(R[a][1]+R[b][1])/2];
+  const eR=mid(33,133), eL=mid(362,263), ipd=Math.hypot(eL[0]-eR[0],eL[1]-eR[1]);
+  const v={};
+  // symmetry
+  const midIdx=[10,151,9,168,6,197,195,5,4,1,2,164,0,17,18,200,199,175,152];
+  const mx=midIdx.reduce((s,i)=>s+R[i][0],0)/midIdx.length;
+  const pairs=[[33,263],[133,362],[61,291],[234,454],[172,397],[70,300],[107,336],[105,334],[129,358],[159,386],[145,374],[58,288],[132,361],[93,323],[50,280],[127,356]];
+  v.sym = pairs.reduce((s,[a,b])=>s+Math.hypot(2*mx-R[a][0]-R[b][0], R[a][1]-R[b][1]),0)/pairs.length/ipd;
+  const eyeY=(R[159][1]+R[145][1]+R[386][1]+R[374][1])/4, mouthY=(R[13][1]+R[14][1])/2;
+  v.eyeSp = ipd/fw;
+  v.eyeMo = (mouthY-eyeY)/vy_(10,152);
+  v.thirds = vy_(9,2)/vy_(2,152);
+  v.lower = vy_(2,13)/vy_(14,152);
+  v.icd = dist(133,362)/ew;
+  v.nose = dist(129,358)/dist(133,362);
+  v.mouth = dist(61,291)/dist(129,358);
+  const tR=Math.atan2(R[33][1]-R[133][1], Math.abs(R[133][0]-R[33][0]))*-1, tL=Math.atan2(R[263][1]-R[362][1], Math.abs(R[263][0]-R[362][0]))*-1;
+  v.tilt = ((tR+tL)/2)*180/Math.PI + 2.5; // +2.5° maps mesh corner points onto clinical canthi (mesh average 1.7° vs population ~4°)
+  v.fwhr = fw/vy_(9,0);
+  v.jaw = dist(172,397)/fw;
+  v.lipR = vy_(14,17)/Math.max(1e-3,vy_(0,13));
+  v.lipF = (vy_(0,13)+vy_(14,17))/dist(61,291);
+  v.brow = ((vy_(105,159)+vy_(334,386))/2)/ew;
+  v.eyeO = ((dist(159,145)+dist(386,374))/2)/ew;
+  v.shape = vy_(10,152)/fw;
+
+  // quality checks
+  const warns=[];
+  const yaw=(dist(1,234)-dist(1,454))/fw;
+  if (Math.abs(yaw)>.12) warns.push("Your head is turned to one side. Symmetry and widths are off; retake looking straight at the lens.");
+  const pitch=vy_(168,1)/vy_(1,152);
+  if (pitch<.5||pitch>1.1) warns.push("Your head is tilted up or down. Hold the phone at eye level and retake.");
+  const b=n=>bs.find(x=>x.categoryName===n)?.score||0;
+  if ((b("mouthSmileLeft")+b("mouthSmileRight"))/2>.35) warns.push("You are smiling. Mouth and lip measures need a neutral face.");
+  if (b("jawOpen")>.15) warns.push("Your mouth is open. Close it for accurate lower-face ratios.");
+  if ((b("eyeBlinkLeft")+b("eyeBlinkRight"))/2>.45) warns.push("Your eyes are partly closed. Retake with eyes relaxed and open.");
+  if (Math.abs(th)>.2) warns.push("Your head was tilted sideways; the app corrected for it, but straight is better.");
+
+  // ----- pixel analysis on a face-normalized crop (face width = 300px)
+  const k=300/Math.hypot(P[454][0]-P[234][0],P[454][1]-P[234][1]);
+  const faceLen=Math.hypot(P[152][0]-P[10][0],P[152][1]-P[10][1]);
+  const cx=(P[234][0]+P[454][0])/2;
+  let sx=Math.max(0,cx-1.0*fw), sy=Math.max(0,P[10][1]-faceLen*.95);
+  const ex=Math.min(W,cx+1.0*fw), ey=Math.min(H,P[152][1]+faceLen*.15);
+  const N=document.createElement("canvas"); N.width=Math.round((ex-sx)*k); N.height=Math.round((ey-sy)*k);
+  const nx=N.getContext("2d",{willReadFrequently:true}); nx.drawImage(c,sx,sy,ex-sx,ey-sy,0,0,N.width,N.height);
+  const D=nx.getImageData(0,0,N.width,N.height).data, NW=N.width, NH=N.height;
+  const q=i=>[(P[i][0]-sx)*k,(P[i][1]-sy)*k];
+  const dn=[-Math.sin(th),Math.cos(th)], rt=[Math.cos(th),Math.sin(th)];
+  const add=(p,vec,s)=>[p[0]+vec[0]*s,p[1]+vec[1]*s];
+  const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+  function avg(p,r=3){ let R_=0,G=0,B=0,n=0; const x0=Math.round(p[0]),y0=Math.round(p[1]);
+    for(let y=y0-r;y<=y0+r;y++)for(let x=x0-r;x<=x0+r;x++){ if(x<0||y<0||x>=NW||y>=NH)continue; const o=(y*NW+x)*4; R_+=D[o];G+=D[o+1];B+=D[o+2];n++; }
+    return n?lab(R_/n,G/n,B/n):null; }
+  const meanLab=arr=>{const a=arr.filter(Boolean);return a.length?[0,1,2].map(j=>a.reduce((s,x)=>s+x[j],0)/a.length):null};
+
+  const cheek=meanLab([avg(q(50),6),avg(q(280),6)]);
+  const fore=avg(q(151),6);
+  // brows
+  const bU=[70,63,105,66,107,300,293,334,296,336], bL=[46,53,52,65,55,276,283,282,295,285];
+  const browPts=bU.map((u,i)=>lerp(q(u),q(bL[i]),.5));
+  const browC=meanLab(browPts.map(p=>avg(p,2)));
+  const browSkin=meanLab(bU.map(u=>avg(add(q(u),dn,-10),3)));
+  if (browC&&browSkin) v.browD=browC[0]/browSkin[0];
+  // lashes
+  const lidR=[161,160,159,158,157], lidL=[388,387,386,385,384];
+  const lid=meanLab([...lidR,...lidL].map(i=>avg(add(q(i),dn,-1),1)));
+  const lidSkin=meanLab([[159,52],[386,282]].map(([a,b2])=>avg(lerp(q(a),q(b2),.55),2)));
+  if (lid&&lidSkin) v.lash=lid[0]/lidSkin[0];
+  // under-eye
+  const und=meanLab([avg(add(q(145),dn,14),4),avg(add(q(374),dn,14),4)]);
+  if (und&&cheek) v.under=und[0]/cheek[0];
+  // lips
+  const lipCol=meanLab([avg(lerp(q(0),q(13),.5),2),avg(lerp(q(14),q(17),.5),3)]);
+  if (lipCol&&cheek) v.lipC=lipCol[1]-cheek[1];
+  // skin texture: high-pass residual of luma in patches
+  function tex(p){ const s=30,h=s/2,x0=Math.round(p[0]-h),y0=Math.round(p[1]-h); if(x0<2||y0<2||x0+s+2>=NW||y0+s+2>=NH) return null;
+    const Y=(x,y)=>{const o=(y*NW+x)*4;return .299*D[o]+.587*D[o+1]+.114*D[o+2]};
+    let sum=0,sq=0,m=0,n=0;
+    for(let y=y0;y<y0+s;y++)for(let x=x0;x<x0+s;x++){ let bsum=0; for(let j=-2;j<=2;j++)for(let i=-2;i<=2;i++) bsum+=Y(x+i,y+j);
+      const r=Y(x,y)-bsum/25; sum+=r; sq+=r*r; m+=Y(x,y); n++; }
+    const mean=m/n, sd=Math.sqrt(sq/n-(sum/n)**2); return sd/mean; }
+  const tx=[tex(q(50)),tex(q(280)),tex(q(151))].filter(x=>x!=null);
+  if (tx.length) v.skin=tx.reduce((a,b2)=>a+b2,0)/tx.length;
+  const tonesL=[avg(q(50),6),avg(q(280),6),fore].filter(Boolean).map(x=>x[0]);
+  if (tonesL.length>=2){ const mm=tonesL.reduce((a,b2)=>a+b2,0)/tonesL.length; v.tone=Math.sqrt(tonesL.reduce((s,x)=>s+(x-mm)**2,0)/tonesL.length)/mm; }
+  // hairline: scan upward from top of forehead for a color edge
+  let hairNote=null, trich=null;
+  if (fore && cheek && dE(fore,cheek)>28) hairNote="Hair seems to cover your forehead, so the hairline was not measured.";
+  else if (fore){
+    const ref=meanLab([fore,avg(q(10),5)]); const ts=[];
+    for (const off of [-40,0,40]){
+      let run=0, found=null; const st=add(q(10),rt,off);
+      for(let t=0;t<faceLen*k*.7;t+=2){ const p=add(st,dn,-t); if(p[1]<2) break; const cc=avg(p,2); if(!cc) break;
+        if(dE(cc,ref)>18){ if(++run>=3){found=t-4;break;} } else run=0; }
+      if(found!=null) ts.push(found);
+    }
+    if (ts.length>=2){ ts.sort((a,b2)=>a-b2); const t=ts[Math.floor(ts.length/2)];
+      trich=add(q(10),dn,-t);
+      const proj=p=>p[0]*dn[0]+p[1]*dn[1];
+      v.upper=(proj(q(9))-proj(trich))/(proj(q(2))-proj(q(9)));
+      if (v.upper<.5||v.upper>1.8){ delete v.upper; trich=null; hairNote="Hairline edge was unclear in this photo."; }
+    } else hairNote="No clear hairline edge found (bald, very light hair, or hair out of frame).";
+  }
+  return {v,warns,hairNote,trich:trich?[trich[0]/k+sx,trich[1]/k+sy]:null,P,th};
+}
+
+/* ---------- scoring ---------- */
+function scoreOf(key,val){
+  const m=M[key], id=m.ideal[sex];
+  if (m.lin){ const [best,worst]=m.lin; const t=(val-best)/(worst-best); return Math.max(1,Math.min(10,10-9*Math.max(0,t))); }
+  if (key==="sym"){ const d=Math.max(0,val-.012); return 10*Math.exp(-.5*(d/m.th)**2); }
+  const d=val-id, tol=d<0?m.tl:m.th; return 10*Math.exp(-.5*(d/tol)**2);
+}
+function tierOf(r){ return r>=8.5?"Top tier":r>=7.5?"Very attractive":r>=6.5?"Attractive":r>=5.5?"Above average":r>=4.5?"Average":r>=3?"Below average":"Well below average"; }
+
+function render(){
+  const {res,ai}=last; const items=[];
+  for (const [k,val] of Object.entries(res.v)) if (M[k]&&isFinite(val)) items.push({k,val,s:scoreOf(k,val)});
+  const g={}; for (const it of items){ const gr=M[it.k].grp; (g[gr]??={sw:0,w:0}); g[gr].sw+=it.s*M[it.k].w; g[gr].w+=M[it.k].w; }
+  const gs=Object.fromEntries(Object.entries(g).map(([a,o])=>[a,o.sw/o.w]));
+  const geo=(gs.prop*3+ (gs.sym??gs.prop)*1.5 + (gs.feat??gs.prop)*1.5)/6;
+  const loc=["hair","skin"].map(x=>gs[x]).filter(x=>x!=null); let vis=loc.length?loc.reduce((a,b)=>a+b,0)/loc.length:geo;
+  if (ai && isFinite(+ai.overall_visual)) vis = .3*vis + .7*Math.max(0,Math.min(10,+ai.overall_visual));
+  const raw=.6*geo+.4*vis;
+  const rating=Math.round(Math.max(0,Math.min(10,10*(raw/10)**1.6))*10)/10;
+  $("bigScore").innerHTML=rating.toFixed(1)+"<small>/10</small>";
+  $("tier").textContent=tierOf(rating);
+  $("scoreNote").textContent = ai ? "Includes the visual review. 5 is the average person; each point above 7 is rare." : "5 is the average person; each point above 7 is rare. Run the visual review for hair, lashes and skin judged by eye.";
+  const w=$("warns"); w.replaceChildren(...res.warns.map(t=>{const d=document.createElement("div");d.className="warnbox";d.textContent=t;return d}));
+  const bars=[...Object.entries(gs).map(([a,s])=>[GROUPS[a],s])]; if (ai&&isFinite(+ai.overall_visual)) bars.push(["Visual review",+ai.overall_visual]);
+  $("bars").replaceChildren(...bars.map(([n,s])=>{const d=document.createElement("div");d.className="bar";
+    d.innerHTML=`<span></span><div class="track"><div class="fill" style="width:${(s*10).toFixed(0)}%"></div></div><span class="num">${s.toFixed(1)}</span>`;d.firstChild.textContent=n;return d}));
+  // findings
+  items.sort((a,b)=>a.s-b.s);
+  const fd=$("findings"); fd.replaceChildren();
+  if (res.hairNote){ const p=document.createElement("p"); p.className="note"; p.textContent=res.hairNote; fd.append(p); }
+  items.forEach((it,i)=>{
+    const m=M[it.k], id=m.ideal[sex];
+    const det=document.createElement("details"); det.className="f"; if(i<3&&it.s<8.5) det.open=true;
+    const chip=it.s>=8?["good","Ideal"]:it.s>=5.5?["warn","Close"]:["bad","Work on this"];
+    let tips, dir="";
+    if (m.lin) tips = it.s>=8?["Already strong. Keep doing what you do."]:m.bad;
+    else if (it.k==="sym") tips = it.s>=8?["Very symmetric. Nothing to fix."]:m.high;
+    else { dir = it.val<id?"low":"high"; tips = it.s>=8?["Right in the ideal zone."]:m[dir]; }
+    const range = m.lin ? "best "+m.fmt(m.lin[0])+" or better" : it.k==="sym" ? "under 1.5% off" : "ideal "+m.fmt(id);
+    det.innerHTML=`<summary><h3></h3><span class="chip ${chip[0]}">${chip[1]}</span></summary><div class="fbody"><p class="meas"></p><p></p><ul></ul><p class="src"></p></div>`;
+    det.querySelector("h3").textContent=m.name;
+    det.querySelector(".meas").textContent=`You: ${m.fmt(it.val)}  ·  ${range}  ·  score ${it.s.toFixed(1)}`;
+    det.querySelector(".fbody p:nth-child(2)").textContent=m.what;
+    det.querySelector("ul").replaceChildren(...tips.map(t=>{const li=document.createElement("li");li.textContent=t;return li}));
+    det.querySelector(".src").textContent="Basis: "+m.src;
+    fd.append(det);
+  });
+  drawOverlay();
+}
+
+function drawOverlay(){
+  const {canvas:c,res}=last, v=$("view"), P=res.P;
+  const xs=P.map(p=>p[0]), ys=P.map(p=>p[1]);
+  const fw=Math.max(...xs)-Math.min(...xs), fh=Math.max(...ys)-Math.min(...ys);
+  const x0=Math.max(0,Math.min(...xs)-fw*.35), x1=Math.min(c.width,Math.max(...xs)+fw*.35);
+  const y0=Math.max(0,Math.min(...ys)-fh*.55), y1=Math.min(c.height,Math.max(...ys)+fh*.15);
+  const s=Math.min(2, 900/(x1-x0)); v.width=Math.round((x1-x0)*s); v.height=Math.round((y1-y0)*s);
+  const g=v.getContext("2d"); g.drawImage(c,x0,y0,x1-x0,y1-y0,0,0,v.width,v.height);
+  const T=p=>[(p[0]-x0)*s,(p[1]-y0)*s];
+  const acc=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()||"#C9481A";
+  g.fillStyle="rgba(255,255,255,.55)"; for(const p of P){const [x,y]=T(p); g.fillRect(x-.8,y-.8,1.6,1.6);}
+  g.lineWidth=Math.max(1.5,v.width/400); g.strokeStyle=acc; g.setLineDash([6,4]);
+  const dir=[Math.cos(res.th),Math.sin(res.th)], half=fw*.6*s;
+  const hline=pt=>{const [x,y]=T(pt); g.beginPath(); g.moveTo(x-dir[0]*half,y-dir[1]*half); g.lineTo(x+dir[0]*half,y+dir[1]*half); g.stroke();};
+  [P[9],P[2],P[152]].forEach(hline); if(res.trich) hline(res.trich);
+  g.setLineDash([]);
+  const seg=(a,b)=>{const A=T(P[a]),B=T(P[b]); g.beginPath(); g.moveTo(...A); g.lineTo(...B); g.stroke();};
+  seg(33,133); seg(362,263); seg(234,454); seg(172,397); seg(129,358); seg(61,291);
+  g.fillStyle=acc; for(const i of [468,473]){const [x,y]=T(P[i]); g.beginPath(); g.arc(x,y,g.lineWidth*2,0,7); g.fill();}
+}
+
+/* ---------- optional Claude visual review ---------- */
+(async()=>{
+  const sample = await window.claude?.use?.("sample").catch(()=>null);
+  if (!sample) return;
+  const lim = await sample.limits().catch(()=>null);
+  if (!lim?.images) return;
+  $("aiPanel").hidden=false;
+  $("aiBtn").onclick = async ()=>{
+    if (!last) return;
+    const btn=$("aiBtn"), out=$("aiOut"); btn.disabled=true; out.innerHTML='<p class="note">Looking closely at your photo. This takes up to a minute...</p>';
+    try{
+      const blob = await new Promise(r=>last.canvas.toBlob(r,"image/jpeg",.9));
+      const meas = Object.entries(last.res.v).map(([k,v])=>M[k]?`${M[k].name}: ${M[k].fmt(v)} (score ${scoreOf(k,v).toFixed(1)}/10)`:"").filter(Boolean).join("\n");
+      const prompt = `The attached selfie belongs to the person using a self-improvement ("looksmaxxing") app who asked to be rated. Sex for ideals: ${sex==="M"?"male":"female"}.
+Geometry was already measured on-device:
+${meas}
+
+Judge ONLY what geometry cannot: hair (style, cut, density, hairline, health), eyebrows (shape, density, grooming), eyelashes (length, density), skin (clarity, acne, texture, tone, under-eyes), facial hair or makeup, teeth if visible, overall grooming and presentation. Be direct and honest like a professional stylist and dermatologist, but never insulting. Do not comment on race, ethnicity or anything that cannot be changed. Calibrate scores so 5 is the average person and 8+ is model level. Give practical, safe tips (no bone smashing, no unproven pills; mention a doctor for prescription options).
+Reply with only JSON in this shape:
+{"hair":{"score":0-10,"seen":"one sentence","tips":["...","..."]},"eyebrows":{...},"eyelashes":{...},"skin":{...},"facial_hair_or_makeup":{...},"teeth_smile":{...} or null,"overall_visual":0-10,"top_priorities":["three short actions, most impactful first"]}`;
+      const ai = await sample.json(prompt,{images:[blob]});
+      last.ai = ai; render(); showAI(ai);
+    }catch(e){
+      const msg={not_granted:"You declined the review, so it's turned off for this visit.",rate_limited:"Too many requests right now. Try again in a few minutes.",refused:"Claude declined to review this photo. Try a different one.",invalid_json:"The answer came back garbled. Tap the button to try again.",image_rejected:"That photo couldn't be sent. Try another one."}[e?.code]||"The review failed. Tap the button to try again.";
+      out.innerHTML=""; const p=document.createElement("p"); p.className="status err"; p.textContent=msg; out.append(p);
+      if (e?.code==="not_granted") $("aiPanel").hidden=true;
+    }finally{ btn.disabled=false; btn.textContent="Run again"; }
+  };
+})();
+function showAI(ai){
+  const out=$("aiOut"); out.replaceChildren();
+  const labels={hair:"Hair",eyebrows:"Eyebrows",eyelashes:"Eyelashes",skin:"Skin",facial_hair_or_makeup:"Facial hair or makeup",teeth_smile:"Teeth and smile"};
+  if (Array.isArray(ai.top_priorities)&&ai.top_priorities.length){ const d=document.createElement("div"); d.className="aicard";
+    d.innerHTML="<h3>Do these first</h3><ul class='tips' style='color:var(--fg)'></ul>"; d.querySelector("ul").replaceChildren(...ai.top_priorities.map(t=>{const li=document.createElement("li");li.textContent=String(t);return li})); out.append(d); }
+  for (const [k,n] of Object.entries(labels)){ const o=ai[k]; if(!o||typeof o!=="object") continue;
+    const d=document.createElement("div"); d.className="aicard";
+    d.innerHTML=`<div class="aihead"><h3></h3><span class="num"></span></div><p></p><ul class="tips"></ul>`;
+    d.querySelector("h3").textContent=n; d.querySelector(".num").textContent=isFinite(+o.score)?(+o.score).toFixed(1)+"/10":"";
+    d.querySelector("p").textContent=String(o.seen||""); d.querySelector("ul").replaceChildren(...(Array.isArray(o.tips)?o.tips:[]).map(t=>{const li=document.createElement("li");li.textContent=String(t);return li}));
+    out.append(d); }
+}
+</script>
+
+<script>if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
+</body></html>
