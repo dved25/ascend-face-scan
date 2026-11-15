@@ -139,19 +139,27 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
     <div class="panel" id="ascPanel">
       <h2>You, ascended</h2>
-      <p class="note">A preview of your face with every tip applied: leaner lower face, symmetry evened out, brows, lashes, lips and eye tilt adjusted toward your ideals, clearer skin. The quick preview runs on your phone and only makes the small, realistic changes it can draw (leaner jaw, clearer skin, groomed brows). For the real full transformation with new hair, beard and body fat, use the AI version below.</p>
+      <p class="note">A preview of your face with every tip applied: leaner lower face, symmetry evened out, brows, lashes, lips and eye tilt adjusted toward your ideals, clearer skin. The quick preview runs on your phone and only makes the small, realistic changes it can draw (leaner jaw, clearer skin, groomed brows). For the real full transformation with new hair, beard and body fat, use the free AI step below.</p>
       <div class="cmp" id="cmp"><img id="imgBefore" alt="Your photo now"><img id="imgAfter" class="after" alt="Preview with all tips applied"><div class="divider" id="cmpLine"></div><span class="tag" style="left:10px">Now</span><span class="tag" style="right:10px">Ascended</span></div>
       <label class="note" for="cmpRange">Drag to compare</label>
       <input type="range" id="cmpRange" min="0" max="100" value="50">
       <div class="row"><button class="btn" type="button" id="saveAsc">Save or share the preview</button></div>
       <div id="aiGen" style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px">
-        <h3>Full AI ascension</h3>
-        <p class="note">For the full glow-up (new haircut, beard, body fat gone, skin and grooming done) an image AI redraws your photo from your plan. It uses your own Google Gemini API key. Get one at aistudio.google.com; image models need billing turned on there, about 4 to 10 cents per image. The key stays on this phone; the photo is sent to Google.</p>
-        <label class="note" for="gemKey">Gemini API key</label>
-        <input id="gemKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key" style="font:15px var(--mono);padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:100%">
-        <div class="row"><button class="btn primary" type="button" id="aiAscBtn">Generate my ascended photo</button></div>
-        <p class="status" id="aiAscStatus" role="status"></p>
-        <img id="aiAscImg" alt="AI-generated ascended version of you" hidden style="width:100%;border-radius:12px">
+        <h3>Full AI ascension, free</h3>
+        <p class="note">For the real glow-up (new haircut, beard, body fat gone, skin and grooming done), Google's free Gemini app redraws your photo from your plan.</p>
+        <ol class="tips" style="color:var(--fg)">
+          <li>Tap <b>Save my photo</b> so your selfie is in your Photos.</li>
+          <li>Tap <b>Copy prompt and open Gemini</b>.</li>
+          <li>In Gemini, attach your selfie, paste the prompt, send, then save the image it makes.</li>
+        </ol>
+        <div class="row">
+          <button class="btn" type="button" id="savePhoto">Save my photo</button>
+          <a class="btn primary" id="openGem" href="https://gemini.google.com/app" target="_blank" rel="noopener">Copy prompt and open Gemini</a>
+        </div>
+        <p class="status" id="gemStatus" role="status"></p>
+        <label class="note" for="gemPrompt">Your prompt (in case copying fails, select it here)</label>
+        <textarea id="gemPrompt" readonly rows="6" style="font:13px/1.5 var(--body);padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:100%;resize:vertical"></textarea>
+        <p class="note">Free Gemini accounts have a daily limit on image edits. Your photo goes to Google only when you send it there yourself.</p>
       </div>
       <p class="note" id="ascNote">On iPhone you can also press and hold the image to save it.</p>
     </div>
@@ -624,6 +632,7 @@ function render(){
   });
   drawOverlay();
   buildPlan(items, rating, ai);
+  $("gemPrompt").value = ascPrompt();
   try { makeAscended(); } catch(e) { console.error(e); $("ascPanel").hidden = true; }
 }
 
@@ -803,9 +812,7 @@ $("saveAsc").onclick=async()=>{ if(!ascBlob) return; const file=new File([ascBlo
   try{ if (navigator.canShare?.({files:[file]})) { await navigator.share({files:[file],title:"Ascended preview"}); return; } }catch(e){ if(e?.name==="AbortError") return; }
   $("ascNote").textContent="Press and hold the image, then tap Save to Photos."; };
 
-/* ---------- AI full ascension (Gemini image editing, user's own key) ---------- */
-const GEM_MODELS=["gemini-nano-banana-2.1","gemini-3.1-flash-image","gemini-2.5-flash-image"];
-try { $("gemKey").value = localStorage.getItem("afs-gem") || ""; } catch {}
+/* ---------- free AI ascension through the Gemini app ---------- */
 function ascPrompt(){
   const {v}=last.res, male=sex==="M", need=k=>v[k]!=null&&scoreOf(k,v[k])<8;
   const ch=[
@@ -822,37 +829,16 @@ function ascPrompt(){
   if (need("sym")) ch.push("more balanced, symmetrical features");
   return `Edit this photo. Show the SAME person after a full year of perfectly following a self-improvement plan. Keep them clearly recognizable: same identity, age, ethnicity, skin tone, eye color, face bone structure, background, camera angle and lighting. Apply these changes: ${ch.join("; ")}. Photorealistic, natural, like a real photo taken a year later; no beauty filter, no plastic skin, no cartoon look, no heavy makeup, no text.`;
 }
-$("aiAscBtn").onclick = async ()=>{
-  if (!last) return; const key=$("gemKey").value.trim(), st=$("aiAscStatus"), btn=$("aiAscBtn");
-  if (!key) { st.textContent="Paste your Gemini API key first."; st.classList.add("err"); return; }
-  try { localStorage.setItem("afs-gem", key); } catch {}
-  st.classList.remove("err"); st.textContent="Generating. This takes 10 to 40 seconds..."; btn.disabled=true;
-  try {
-    const big=last.canvas, sc=Math.min(1,1024/Math.max(big.width,big.height)), c=document.createElement("canvas"); c.width=Math.round(big.width*sc); c.height=Math.round(big.height*sc); c.getContext("2d").drawImage(big,0,0,c.width,c.height);
-    const b64=c.toDataURL("image/jpeg",.9).split(",")[1];
-    const body=JSON.stringify({contents:[{parts:[{text:ascPrompt()},{inlineData:{mimeType:"image/jpeg",data:b64}}]}],generationConfig:{responseModalities:["TEXT","IMAGE"]}});
-    let lastErr=null;
-    for (const m of GEM_MODELS){
-      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body});
-      const j=await r.json().catch(()=>({}));
-      if (r.status===404) { lastErr={status:404}; continue; }
-      if (!r.ok) { lastErr={status:r.status,msg:j?.error?.message||""}; if (r.status===429||r.status===400||r.status===403) break; continue; }
-      const part=(j.candidates?.[0]?.content?.parts||[]).find(p=>p.inlineData||p.inline_data);
-      if (!part) { lastErr={status:"noimg",msg:(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text).join(" ")}; continue; }
-      const d=part.inlineData||part.inline_data, img=$("aiAscImg");
-      img.src=`data:${d.mimeType||d.mime_type||"image/png"};base64,${d.data}`; img.hidden=false;
-      st.textContent="Done. Press and hold the image to save it."; return;
-    }
-    const e=lastErr||{};
-    st.classList.add("err");
-    st.textContent = e.status===429 ? "Your key has no image quota. In Google AI Studio, turn on billing for this key, then try again."
-      : (e.status===400&&/key/i.test(e.msg)) || e.status===403 ? "Google rejected the key. Check it in Google AI Studio and paste it again."
-      : e.status==="noimg" ? "The AI answered without an image"+(e.msg?": "+e.msg.slice(0,160):"")+". Try a clearer, front-facing photo."
-      : e.status===404 ? "None of the image models are available for this key yet."
-      : "Generation failed ("+(e.status||"network")+"). "+(e.msg||"Check your connection and try again.").slice(0,200);
-  } catch(err) { st.classList.add("err"); st.textContent="Couldn't reach Google. Check your connection and try again."; }
-  finally { btn.disabled=false; }
-};
+$("openGem").addEventListener("click", ()=>{
+  const t=$("gemPrompt").value; const st=$("gemStatus");
+  if (!t) return;
+  navigator.clipboard?.writeText(t).then(()=>{ st.classList.remove("err"); st.textContent="Prompt copied. In Gemini: attach your selfie, paste, send."; })
+    .catch(()=>{ st.classList.add("err"); st.textContent="Couldn't copy automatically. Select the prompt below and copy it."; });
+});
+$("savePhoto").onclick = ()=>{ if (!last) return; const st=$("gemStatus");
+  last.canvas.toBlob(async b=>{ const file=new File([b],"my-selfie.jpg",{type:"image/jpeg"});
+    try { if (navigator.canShare?.({files:[file]})) { await navigator.share({files:[file]}); st.classList.remove("err"); st.textContent="Pick Save Image to put it in your Photos."; return; } } catch(e){ if (e?.name==="AbortError") return; }
+    const img=$("imgBefore"); img.scrollIntoView({block:"center"}); st.classList.remove("err"); st.textContent="Press and hold the photo above, then tap Save to Photos."; },"image/jpeg",.92); };
 
 function drawOverlay(){
   const {canvas:c,res}=last, v=$("view"), P=res.P;
