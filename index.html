@@ -139,11 +139,20 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
     <div class="panel" id="ascPanel">
       <h2>You, ascended</h2>
-      <p class="note">A preview of your face with every tip applied: leaner lower face, symmetry evened out, brows, lashes, lips and eye tilt adjusted toward your ideals, clearer skin. It edits your own photo; bone structure and hair stay as they are.</p>
+      <p class="note">A preview of your face with every tip applied: leaner lower face, symmetry evened out, brows, lashes, lips and eye tilt adjusted toward your ideals, clearer skin. The quick preview below runs on your phone and edits your own face; the full AI version further down also changes hair, beard and body fat.</p>
       <div class="cmp" id="cmp"><img id="imgBefore" alt="Your photo now"><img id="imgAfter" class="after" alt="Preview with all tips applied"><div class="divider" id="cmpLine"></div><span class="tag" style="left:10px">Now</span><span class="tag" style="right:10px">Ascended</span></div>
       <label class="note" for="cmpRange">Drag to compare</label>
       <input type="range" id="cmpRange" min="0" max="100" value="50">
       <div class="row"><button class="btn" type="button" id="saveAsc">Save or share the preview</button></div>
+      <div id="aiGen" style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px">
+        <h3>Full AI ascension</h3>
+        <p class="note">For the full glow-up (new haircut, beard, body fat gone, skin and grooming done) an image AI redraws your photo from your plan. It uses your own Google Gemini API key. Get one at aistudio.google.com; image models need billing turned on there, about 4 to 10 cents per image. The key stays on this phone; the photo is sent to Google.</p>
+        <label class="note" for="gemKey">Gemini API key</label>
+        <input id="gemKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key" style="font:15px var(--mono);padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:100%">
+        <div class="row"><button class="btn primary" type="button" id="aiAscBtn">Generate my ascended photo</button></div>
+        <p class="status" id="aiAscStatus" role="status"></p>
+        <img id="aiAscImg" alt="AI-generated ascended version of you" hidden style="width:100%;border-radius:12px">
+      </div>
       <p class="note" id="ascNote">On iPhone you can also press and hold the image to save it.</p>
     </div>
 
@@ -727,22 +736,24 @@ function makeAscended(){
   const id=k=>M[k].ideal[sex];
   // symmetry: pull each pair 40% toward its mirrored average
   for (const [a,b] of PAIRS){ const ax=2*mx-R[b][0], ay=R[b][1]; const cx=(R[a][0]+ax)/2, cy=(R[a][1]+ay)/2;
-    const dx=(cx-R[a][0])*.4, dy=(cy-R[a][1])*.4; T[a][0]+=dx; T[a][1]+=dy; T[b][0]-=dx; T[b][1]+=dy; }
+    const dx=(cx-R[a][0])*.7, dy=(cy-R[a][1])*.7; T[a][0]+=dx; T[a][1]+=dy; T[b][0]-=dx; T[b][1]+=dy; }
   // leaner lower face
-  const lean=fw*.018;
+  const lean=fw*(v.lean!=null&&v.lean<id("lean")?.045:.028);
   for (const i of [365,379,378,400,377,148,176,149,150,136]) T[i][0]-=out(i)*lean;
-  for (const i of [187,411,147,376,213,433,192,416,214,434,207,427,216,436]) T[i][0]-=out(i)*lean*.7;
+  for (const i of [187,411,147,376,213,433,192,416,214,434,207,427,216,436]) T[i][0]-=out(i)*lean*.9;
+  for (const i of [148,176,149,377,400,378]) T[i][1]-=fw*.012;
+  for (const i of [123,352,116,345,117,346]) { T[i][1]-=fw*.01; T[i][0]+=out(i)*fw*.006; }
   // jaw width toward ideal, capped
-  { const d=(id("jaw")-v.jaw)*fw/2, c=Math.max(-fw*.02,Math.min(fw*.025,d*.6)); for (const i of [172,397,58,288,136,365]) T[i][0]+=out(i)*c*(i===136||i===365?.6:1); }
+  { const d=(id("jaw")-v.jaw)*fw/2, c=Math.max(-fw*.03,Math.min(fw*.04,d*.9))+(sex==="M"?fw*.012:0); for (const i of [172,397,58,288,136,365]) T[i][0]+=out(i)*c*(i===136||i===365?.6:1); }
   // canthal tilt: lift outer corners and brow tails
-  if (v.tilt<id("tilt")) { const dy=-Math.tan(Math.min(3,id("tilt")-v.tilt)*Math.PI/180)*ew*.8;
+  if (v.tilt<id("tilt")) { const dy=-Math.tan(Math.min(6,id("tilt")-v.tilt+1.5)*Math.PI/180)*ew;
     mv([33,7,246,130,263,249,466,359],0,dy); mv([163,390,161,388],0,dy*.5); mv([70,46,300,276],0,dy*.8); }
   // brow height toward ideal
-  { const dy=-Math.max(-.1,Math.min(.1,(id("brow")-v.brow)*.6))*ew; mv([...BROW_R,...BROW_L],0,dy); }
+  { const dy=-Math.max(-.16,Math.min(.16,(id("brow")-v.brow)*.9))*ew; mv([...BROW_R,...BROW_L],0,dy); }
   // fuller lips
-  if (v.lipF<id("lipF")) { const s=Math.min(.05,id("lipF")-v.lipF)*dist(61,291)*.5; mv([0,37,39,40,267,269,270,185,409],0,-s); mv([17,84,181,91,314,405,321,146,375],0,s); }
+  if (v.lipF<id("lipF")) { const s=Math.min(.08,id("lipF")-v.lipF+.01)*dist(61,291)*.6; mv([0,37,39,40,267,269,270,185,409],0,-s); mv([17,84,181,91,314,405,321,146,375],0,s); }
   // nose slimmed by contouring
-  if (v.nose>id("nose")) { const s=Math.min(.06,(v.nose-id("nose"))*.25)*dist(129,358)*.5; for (const i of [129,358,64,294,48,278,98,327,49,279,102,331,219,439]) T[i][0]-=out(i)*s; }
+  if (v.nose>id("nose")) { const s=Math.min(.1,(v.nose-id("nose"))*.4)*dist(129,358)*.5; for (const i of [129,358,64,294,48,278,98,327,49,279,102,331,219,439]) T[i][0]-=out(i)*s; }
   const back=([x,y])=>[x*ci-y*sn, x*sn+y*ci];
   const S=P.slice(0,468).map(p=>[p[0],p[1]]), D=T.slice(0,468).map(back);
   const xs=S.map(p=>p[0]), ys=S.map(p=>p[1]); const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
@@ -770,12 +781,17 @@ function makeAscended(){
   for (const L of [EYE_R,EYE_L,LIPS,BROW_R,BROW_L]) { mk.save(); mk.lineWidth=fwPx*.03; mk.strokeStyle="#000"; mk.fillStyle="#000"; poly(mk,L.map(Q)); mk.fill(); mk.stroke(); mk.restore(); }
   const softMask=blurCopy(mask, fwPx*.02);
   const smooth=blurCopy(o, fwPx*.012); const sg=smooth.getContext("2d"); sg.globalCompositeOperation="destination-in"; sg.drawImage(softMask,0,0);
-  g.globalAlpha=Math.min(.8,.45+(10-Math.min(sc("skin"),sc("tone")))*.05); g.drawImage(smooth,0,0); g.globalAlpha=1;
+  g.globalAlpha=Math.min(.82,.55+(10-Math.min(sc("skin"),sc("tone")))*.04); g.drawImage(smooth,0,0); g.globalAlpha=1;
   const layer=(fn,blur,op,alpha)=>{ const cv=document.createElement("canvas"); cv.width=W; cv.height=H; const x=cv.getContext("2d"); fn(x); const bl=blurCopy(cv,blur); g.save(); g.globalCompositeOperation=op; g.globalAlpha=alpha; g.drawImage(bl,0,0); g.restore(); };
-  layer(x=>{ x.fillStyle="#fff"; for (const [i,j] of [[145,230],[374,450]]){ const p=Q(i),q2=Q(j); x.beginPath(); x.ellipse((p[0]+q2[0])/2,(p[1]+q2[1])/2+fwPx*.01,fwPx*.07,fwPx*.035,th,0,7); x.fill(); } }, fwPx*.02, "soft-light", sc("under")<8?.55:.3);
-  layer(x=>{ x.fillStyle="rgb(45,32,25)"; for (const B of [BROW_R,BROW_L]) { poly(x,B.map(Q)); x.fill(); } }, fwPx*.006, "multiply", sc("browD")<9?.35:.15);
-  layer(x=>{ x.strokeStyle="rgb(15,12,12)"; x.lineWidth=fwPx*.009; x.lineCap="round"; for (const L of [[33,246,161,160,159,158,157,173,133],[263,466,388,387,386,385,384,398,362]]) { x.beginPath(); L.map(Q).forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])); x.stroke(); } }, fwPx*.003, "multiply", sc("lash")<9?.55:.3);
-  layer(x=>{ x.fillStyle="rgb(200,70,80)"; poly(x,LIPS.map(Q)); x.fill(); }, fwPx*.006, "soft-light", sc("lipC")<9?.45:.25);
+  layer(x=>{ x.fillStyle="#fff"; for (const [i,j] of [[145,230],[374,450]]){ const p=Q(i),q2=Q(j); x.beginPath(); x.ellipse((p[0]+q2[0])/2,(p[1]+q2[1])/2+fwPx*.01,fwPx*.07,fwPx*.035,th,0,7); x.fill(); } }, fwPx*.02, "soft-light", sc("under")<8?.8:.5);
+  layer(x=>{ x.fillStyle="rgb(45,32,25)"; for (const B of [BROW_R,BROW_L]) { poly(x,B.map(Q)); x.fill(); } }, fwPx*.006, "multiply", sc("browD")<9?.55:.3);
+  layer(x=>{ x.strokeStyle="rgb(15,12,12)"; x.lineWidth=fwPx*.009; x.lineCap="round"; for (const L of [[33,246,161,160,159,158,157,173,133],[263,466,388,387,386,385,384,398,362]]) { x.beginPath(); L.map(Q).forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])); x.stroke(); } }, fwPx*.003, "multiply", sc("lash")<9?.75:.5);
+  layer(x=>{ x.fillStyle="rgb(200,70,80)"; poly(x,LIPS.map(Q)); x.fill(); }, fwPx*.006, "soft-light", (sex==="M"?.5:1)*(sc("lipC")<9?.6:.35));
+  // whiter teeth when the mouth is open
+  layer(x=>{ x.fillStyle="#fff"; poly(x,[78,191,80,81,82,13,312,311,310,415,308,324,318,402,317,14,87,178,88,95].map(Q)); x.fill(); }, fwPx*.004, "soft-light", .6);
+  // healthy glow: warm, brighter skin with a touch more clarity
+  { const glow=document.createElement("canvas"); glow.width=W; glow.height=H; const gx=glow.getContext("2d"); gx.fillStyle="rgb(255,214,180)"; gx.fillRect(0,0,W,H); gx.globalCompositeOperation="destination-in"; gx.drawImage(softMask,0,0);
+    g.save(); g.globalCompositeOperation="soft-light"; g.globalAlpha=.35; g.drawImage(glow,0,0); g.restore(); }
   const ox0=Math.max(0,x0-(x1-x0)*.35), ox1=Math.min(W,x1+(x1-x0)*.35), oy0=Math.max(0,y0-(y1-y0)*.55), oy1=Math.min(H,y1+(y1-y0)*.15);
   const crop=cv=>{ const k=document.createElement("canvas"); const s2=Math.min(2,1000/(ox1-ox0)); k.width=Math.round((ox1-ox0)*s2); k.height=Math.round((oy1-oy0)*s2); k.getContext("2d").drawImage(cv,ox0,oy0,ox1-ox0,oy1-oy0,0,0,k.width,k.height); return k; };
   const before=crop(src), after=crop(o);
@@ -786,6 +802,57 @@ $("cmpRange").oninput=e=>{ const x=e.target.value; $("imgAfter").style.clipPath=
 $("saveAsc").onclick=async()=>{ if(!ascBlob) return; const file=new File([ascBlob],"ascended.jpg",{type:"image/jpeg"});
   try{ if (navigator.canShare?.({files:[file]})) { await navigator.share({files:[file],title:"Ascended preview"}); return; } }catch(e){ if(e?.name==="AbortError") return; }
   $("ascNote").textContent="Press and hold the image, then tap Save to Photos."; };
+
+/* ---------- AI full ascension (Gemini image editing, user's own key) ---------- */
+const GEM_MODELS=["gemini-nano-banana-2.1","gemini-3.1-flash-image","gemini-2.5-flash-image"];
+try { $("gemKey").value = localStorage.getItem("afs-gem") || ""; } catch {}
+function ascPrompt(){
+  const {v}=last.res, male=sex==="M", need=k=>v[k]!=null&&scoreOf(k,v[k])<8;
+  const ch=[
+    male?"lean, athletic body fat around 12%: visibly sharper jawline, defined cheekbones, no softness under the chin":"lean, healthy body fat around 21%: defined cheekbones and a clean jaw and chin line",
+    "perfectly clear, even, healthy skin with natural texture (no acne, no redness, no dark spots), rested eyes with no dark circles or puffiness",
+    male?"thick, well-groomed natural eyebrows, slightly lower and straighter":"full, well-shaped brows with a soft arch and lifted tails",
+    male?"darker, denser natural eyelashes":"long, curled lashes with subtle mascara",
+    "healthy, hydrated lips with natural color", "white, clean teeth if visible", "bright white eye whites",
+    male?"a modern, flattering haircut chosen for this face shape with healthy, thick hair; a sharp, well-trimmed short beard or clean shave, whichever suits this face best":"healthy, glossy, voluminous hair in a flattering cut for this face shape",
+    "confident, upright posture with the head held level"];
+  if (need("tilt")) ch.push("slightly more lifted outer eye corners");
+  if (need("upper")) ch.push("hairstyle that balances the forehead height");
+  if (need("lipF")) ch.push("slightly fuller-looking lips");
+  if (need("sym")) ch.push("more balanced, symmetrical features");
+  return `Edit this photo. Show the SAME person after a full year of perfectly following a self-improvement plan. Keep them clearly recognizable: same identity, age, ethnicity, skin tone, eye color, face bone structure, background, camera angle and lighting. Apply these changes: ${ch.join("; ")}. Photorealistic, natural, like a real photo taken a year later; no beauty filter, no plastic skin, no cartoon look, no heavy makeup, no text.`;
+}
+$("aiAscBtn").onclick = async ()=>{
+  if (!last) return; const key=$("gemKey").value.trim(), st=$("aiAscStatus"), btn=$("aiAscBtn");
+  if (!key) { st.textContent="Paste your Gemini API key first."; st.classList.add("err"); return; }
+  try { localStorage.setItem("afs-gem", key); } catch {}
+  st.classList.remove("err"); st.textContent="Generating. This takes 10 to 40 seconds..."; btn.disabled=true;
+  try {
+    const big=last.canvas, sc=Math.min(1,1024/Math.max(big.width,big.height)), c=document.createElement("canvas"); c.width=Math.round(big.width*sc); c.height=Math.round(big.height*sc); c.getContext("2d").drawImage(big,0,0,c.width,c.height);
+    const b64=c.toDataURL("image/jpeg",.9).split(",")[1];
+    const body=JSON.stringify({contents:[{parts:[{text:ascPrompt()},{inlineData:{mimeType:"image/jpeg",data:b64}}]}],generationConfig:{responseModalities:["TEXT","IMAGE"]}});
+    let lastErr=null;
+    for (const m of GEM_MODELS){
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body});
+      const j=await r.json().catch(()=>({}));
+      if (r.status===404) { lastErr={status:404}; continue; }
+      if (!r.ok) { lastErr={status:r.status,msg:j?.error?.message||""}; if (r.status===429||r.status===400||r.status===403) break; continue; }
+      const part=(j.candidates?.[0]?.content?.parts||[]).find(p=>p.inlineData||p.inline_data);
+      if (!part) { lastErr={status:"noimg",msg:(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text).join(" ")}; continue; }
+      const d=part.inlineData||part.inline_data, img=$("aiAscImg");
+      img.src=`data:${d.mimeType||d.mime_type||"image/png"};base64,${d.data}`; img.hidden=false;
+      st.textContent="Done. Press and hold the image to save it."; return;
+    }
+    const e=lastErr||{};
+    st.classList.add("err");
+    st.textContent = e.status===429 ? "Your key has no image quota. In Google AI Studio, turn on billing for this key, then try again."
+      : (e.status===400&&/key/i.test(e.msg)) || e.status===403 ? "Google rejected the key. Check it in Google AI Studio and paste it again."
+      : e.status==="noimg" ? "The AI answered without an image"+(e.msg?": "+e.msg.slice(0,160):"")+". Try a clearer, front-facing photo."
+      : e.status===404 ? "None of the image models are available for this key yet."
+      : "Generation failed ("+(e.status||"network")+"). "+(e.msg||"Check your connection and try again.").slice(0,200);
+  } catch(err) { st.classList.add("err"); st.textContent="Couldn't reach Google. Check your connection and try again."; }
+  finally { btn.disabled=false; }
+};
 
 function drawOverlay(){
   const {canvas:c,res}=last, v=$("view"), P=res.P;
