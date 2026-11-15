@@ -139,14 +139,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
     <div class="panel" id="ascPanel">
       <h2>You, ascended</h2>
-      <p class="note">A preview of your face with every tip applied: leaner lower face, symmetry evened out, brows, lashes, lips and eye tilt adjusted toward your ideals, clearer skin. The quick preview runs on your phone and only makes the small, realistic changes it can draw (leaner jaw, clearer skin, groomed brows). For the real full transformation with new hair, beard and body fat, use the free AI step below.</p>
-      <div class="cmp" id="cmp"><img id="imgBefore" alt="Your photo now"><img id="imgAfter" class="after" alt="Preview with all tips applied"><div class="divider" id="cmpLine"></div><span class="tag" style="left:10px">Now</span><span class="tag" style="right:10px">Ascended</span></div>
-      <label class="note" for="cmpRange">Drag to compare</label>
-      <input type="range" id="cmpRange" min="0" max="100" value="50">
-      <div class="row"><button class="btn" type="button" id="saveAsc">Save or share the preview</button></div>
-      <div id="aiGen" style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px">
-        <h3>Full AI ascension, free</h3>
-        <p class="note">For the real glow-up (new haircut, beard, body fat gone, skin and grooming done), Google's free Gemini app redraws your photo from your plan.</p>
+      <div id="aiGen" style="display:flex;flex-direction:column;gap:10px">
+        <p class="note">Google's free Gemini app redraws your photo after following your plan. The prompt below is built from your scan: it fixes only what you need to work on and keeps your strengths.</p>
         <ol class="tips" style="color:var(--fg)">
           <li>Tap <b>Save my photo</b> so your selfie is in your Photos.</li>
           <li>Tap <b>Copy prompt and open Gemini</b>.</li>
@@ -157,11 +151,11 @@ input[type=range]{width:100%;accent-color:var(--accent)}
           <a class="btn primary" id="openGem" href="https://gemini.google.com/app" target="_blank" rel="noopener">Copy prompt and open Gemini</a>
         </div>
         <p class="status" id="gemStatus" role="status"></p>
+        <img id="selfieImg" alt="Your selfie, press and hold to save" hidden style="width:100%;border-radius:12px">
         <label class="note" for="gemPrompt">Your prompt (in case copying fails, select it here)</label>
-        <textarea id="gemPrompt" readonly rows="6" style="font:13px/1.5 var(--body);padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:100%;resize:vertical"></textarea>
+        <textarea id="gemPrompt" readonly rows="10" style="font:13px/1.5 var(--body);padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:100%;resize:vertical"></textarea>
         <p class="note">Free Gemini accounts have a daily limit on image edits. Your photo goes to Google only when you send it there yourself.</p>
       </div>
-      <p class="note" id="ascNote">On iPhone you can also press and hold the image to save it.</p>
     </div>
 
     <div class="panel" id="aiPanel" hidden>
@@ -203,7 +197,6 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   </section>
 </main>
 
-<script src="./delaunator.min.js"></script>
 <script type="module">
 import { FaceLandmarker, FilesetResolver } from "./vision_bundle.mjs";
 
@@ -633,7 +626,6 @@ function render(){
   drawOverlay();
   buildPlan(items, rating, ai);
   $("gemPrompt").value = ascPrompt();
-  try { makeAscended(); } catch(e) { console.error(e); $("ascPanel").hidden = true; }
 }
 
 /* ---------- written plan ---------- */
@@ -718,116 +710,83 @@ $("copyPlan").onclick = async ()=>{ try{ await navigator.clipboard.writeText(pla
   catch{ const r=document.createRange(); r.selectNodeContents($("plan")); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); $("planNote").textContent="Copy is blocked here. The plan is selected; use your phone's Copy."; } };
 $("sharePlan").onclick = async ()=>{ try{ await navigator.share({title:"My Ascend plan", text:planText}); }catch(e){ if(e?.name!=="AbortError") $("planNote").textContent="Sharing isn't available here. Use Copy instead."; } };
 
-/* ---------- ascended preview: landmark warp + feature retouch ---------- */
-const OVAL=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
-const EYE_R=[33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7], EYE_L=[263,466,388,387,386,385,384,398,362,382,381,380,374,373,390,249];
-const LIPS=[61,185,40,39,37,0,267,269,270,409,291,375,321,405,314,17,84,181,91,146];
-const BROW_R=[70,63,105,66,107,55,65,52,53,46], BROW_L=[300,293,334,296,336,285,295,282,283,276];
-const PAIRS=[[33,263],[133,362],[61,291],[234,454],[172,397],[70,300],[107,336],[105,334],[129,358],[159,386],[145,374],[58,288],[132,361],[93,323],[50,280],[127,356],[46,276],[63,293],[66,296],[52,282],[136,365],[150,379],[149,378],[176,400],[148,377],[64,294],[40,270],[91,321]];
-let ascURL=null, ascBlob=null;
-function blurCopy(src, r){ const f=Math.max(1,r); const sm=document.createElement("canvas"); sm.width=Math.max(1,Math.round(src.width/f)); sm.height=Math.max(1,Math.round(src.height/f));
-  const a=sm.getContext("2d"); a.imageSmoothingQuality="high"; a.drawImage(src,0,0,sm.width,sm.height);
-  const o=document.createElement("canvas"); o.width=src.width; o.height=src.height; const b=o.getContext("2d"); b.imageSmoothingQuality="high"; b.drawImage(sm,0,0,o.width,o.height); return o; }
-function poly(g, pts){ g.beginPath(); pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1])); g.closePath(); }
-function makeAscended(){
-  if (!window.Delaunator) { $("ascPanel").hidden=true; return; }
-  $("ascPanel").hidden=false;
-  const {canvas:src,res}=last, {v,P,th}=res, W=src.width, H=src.height;
-  const co=Math.cos(-th), si=Math.sin(-th), ci=Math.cos(th), sn=Math.sin(th);
-  const R=P.map(([x,y])=>[x*co-y*si, x*si+y*co]);
-  const T=R.map(p=>[p[0],p[1]]);
-  const dist=(a,b)=>Math.hypot(R[a][0]-R[b][0],R[a][1]-R[b][1]);
-  const fw=dist(234,454), ew=(dist(33,133)+dist(362,263))/2;
-  const midI=[10,151,9,168,6,197,195,5,4,1,2,164,0,17,18,200,199,175,152];
-  const mx=midI.reduce((s,i)=>s+R[i][0],0)/midI.length;
-  const mv=(ids,dx,dy)=>ids.forEach(i=>{T[i][0]+=dx;T[i][1]+=dy;});
-  const out=i=>Math.sign(R[i][0]-mx)||1;
-  const id=k=>M[k].ideal[sex];
-  // symmetry: pull each pair 40% toward its mirrored average
-  for (const [a,b] of PAIRS){ const ax=2*mx-R[b][0], ay=R[b][1]; const cx=(R[a][0]+ax)/2, cy=(R[a][1]+ay)/2;
-    const dx=(cx-R[a][0])*.5, dy=(cy-R[a][1])*.5; T[a][0]+=dx; T[a][1]+=dy; T[b][0]-=dx; T[b][1]+=dy; }
-  // leaner lower face
-  const lean=fw*(v.lean!=null&&v.lean<id("lean")?.028:.016);
-  for (const i of [365,379,378,400,377,148,176,149,150,136]) T[i][0]-=out(i)*lean;
-  for (const i of [187,411,147,376,213,433,192,416,214,434,207,427,216,436]) T[i][0]-=out(i)*lean*.6;
-  for (const i of [148,176,149,377,400,378]) T[i][1]-=fw*.005;
-  for (const i of [123,352,116,345,117,346]) { T[i][1]-=fw*.005; T[i][0]+=out(i)*fw*.003; }
-  // jaw width toward ideal, capped
-  { const d=(id("jaw")-v.jaw)*fw/2, c=Math.max(-fw*.02,Math.min(fw*.025,d*.6))+(sex==="M"?fw*.006:0); for (const i of [172,397,58,288,136,365]) T[i][0]+=out(i)*c*(i===136||i===365?.6:1); }
-  // canthal tilt: lift outer corners and brow tails
-  if (v.tilt<id("tilt")) { const dy=-Math.tan(Math.min(3.5,id("tilt")-v.tilt+.5)*Math.PI/180)*ew*.8;
-    mv([33,7,246,130,263,249,466,359],0,dy); mv([163,390,161,388],0,dy*.5); mv([70,46,300,276],0,dy*.8); }
-  // brow height toward ideal
-  { const dy=-Math.max(-.08,Math.min(.08,(id("brow")-v.brow)*.5))*ew; mv([...BROW_R,...BROW_L],0,dy); }
-  // fuller lips
-  if (v.lipF<id("lipF")) { const s=Math.min(.04,id("lipF")-v.lipF)*dist(61,291)*.5; mv([0,37,39,40,267,269,270,185,409],0,-s); mv([17,84,181,91,314,405,321,146,375],0,s); }
-  // nose slimmed by contouring
-  if (v.nose>id("nose")) { const s=Math.min(.05,(v.nose-id("nose"))*.2)*dist(129,358)*.5; for (const i of [129,358,64,294,48,278,98,327,49,279,102,331,219,439]) T[i][0]-=out(i)*s; }
-  const back=([x,y])=>[x*ci-y*sn, x*sn+y*ci];
-  const S=P.slice(0,468).map(p=>[p[0],p[1]]), D=T.slice(0,468).map(back);
-  const xs=S.map(p=>p[0]), ys=S.map(p=>p[1]); const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
-  const padX=(x1-x0)*.25, padY=(y1-y0)*.25;
-  for (let i=0;i<=8;i++){ const t=i/8; for (const pt of [[x0-padX+t*(x1-x0+2*padX),y0-padY],[x0-padX+t*(x1-x0+2*padX),y1+padY],[x0-padX,y0-padY+t*(y1-y0+2*padY)],[x1+padX,y0-padY+t*(y1-y0+2*padY)]]) { S.push(pt); D.push(pt); } }
-  const o=document.createElement("canvas"); o.width=W; o.height=H; const g=o.getContext("2d"); g.drawImage(src,0,0);
-  const tri=Delaunator.from(S).triangles;
-  for (let t=0;t<tri.length;t+=3){ const ia=tri[t],ib=tri[t+1],ic=tri[t+2];
-    const s0=S[ia],s1=S[ib],s2=S[ic], d0=D[ia],d1=D[ib],d2=D[ic];
-    if (Math.hypot(s0[0]-d0[0],s0[1]-d0[1])+Math.hypot(s1[0]-d1[0],s1[1]-d1[1])+Math.hypot(s2[0]-d2[0],s2[1]-d2[1])<.05) continue;
-    const [X0,Y0]=s0,[X1,Y1]=s1,[X2,Y2]=s2,[u0,v0]=d0,[u1,v1]=d1,[u2,v2]=d2;
-    const den=X0*(Y1-Y2)+X1*(Y2-Y0)+X2*(Y0-Y1); if (Math.abs(den)<1e-6) continue;
-    const a=(u0*(Y1-Y2)+u1*(Y2-Y0)+u2*(Y0-Y1))/den, b=(v0*(Y1-Y2)+v1*(Y2-Y0)+v2*(Y0-Y1))/den;
-    const c=(u0*(X2-X1)+u1*(X0-X2)+u2*(X1-X0))/den, d=(v0*(X2-X1)+v1*(X0-X2)+v2*(X1-X0))/den;
-    const e=(u0*(X1*Y2-X2*Y1)+u1*(X2*Y0-X0*Y2)+u2*(X0*Y1-X1*Y0))/den, f=(v0*(X1*Y2-X2*Y1)+v1*(X2*Y0-X0*Y2)+v2*(X0*Y1-X1*Y0))/den;
-    const cx=(u0+u1+u2)/3, cy=(v0+v1+v2)/3, ex=p=>{const dx=p[0]-cx,dy=p[1]-cy,l=Math.hypot(dx,dy)||1;return [p[0]+dx/l*.9,p[1]+dy/l*.9]};
-    g.save(); poly(g,[ex(d0),ex(d1),ex(d2)]); g.clip(); g.setTransform(a,b,c,d,e,f);
-    const bx=Math.max(0,Math.floor(Math.min(X0,X1,X2))-2), by=Math.max(0,Math.floor(Math.min(Y0,Y1,Y2))-2);
-    const bw=Math.min(W-bx,Math.ceil(Math.max(X0,X1,X2))+2-bx), bh=Math.min(H-by,Math.ceil(Math.max(Y0,Y1,Y2))+2-by);
-    if (bw>0&&bh>0) g.drawImage(src,bx,by,bw,bh,bx,by,bw,bh); g.restore(); }
-  // retouch on the warped face
-  const Q=i=>D[i], fwPx=Math.hypot(D[454][0]-D[234][0],D[454][1]-D[234][1]), sc=k=>v[k]!=null?scoreOf(k,v[k]):10;
-  const mask=document.createElement("canvas"); mask.width=W; mask.height=H; const mk=mask.getContext("2d");
-  mk.fillStyle="#fff"; poly(mk,OVAL.map(Q)); mk.fill(); mk.globalCompositeOperation="destination-out";
-  for (const L of [EYE_R,EYE_L,LIPS,BROW_R,BROW_L]) { mk.save(); mk.lineWidth=fwPx*.03; mk.strokeStyle="#000"; mk.fillStyle="#000"; poly(mk,L.map(Q)); mk.fill(); mk.stroke(); mk.restore(); }
-  const softMask=blurCopy(mask, fwPx*.02);
-  const smooth=blurCopy(o, fwPx*.006); const sg=smooth.getContext("2d"); sg.globalCompositeOperation="destination-in"; sg.drawImage(softMask,0,0);
-  g.globalAlpha=Math.min(.45,.2+(10-Math.min(sc("skin"),sc("tone")))*.03); g.drawImage(smooth,0,0); g.globalAlpha=1;
-  const layer=(fn,blur,op,alpha)=>{ const cv=document.createElement("canvas"); cv.width=W; cv.height=H; const x=cv.getContext("2d"); fn(x); const bl=blurCopy(cv,blur); g.save(); g.globalCompositeOperation=op; g.globalAlpha=alpha; g.drawImage(bl,0,0); g.restore(); };
-  layer(x=>{ x.fillStyle="#fff"; for (const [i,j] of [[145,230],[374,450]]){ const p=Q(i),q2=Q(j); x.beginPath(); x.ellipse((p[0]+q2[0])/2,(p[1]+q2[1])/2+fwPx*.01,fwPx*.07,fwPx*.035,th,0,7); x.fill(); } }, fwPx*.02, "soft-light", sc("under")<8?.4:.2);
-  layer(x=>{ x.fillStyle="rgb(45,32,25)"; for (const B of [BROW_R,BROW_L]) { poly(x,B.map(Q)); x.fill(); } }, fwPx*.012, "multiply", sc("browD")<9?.18:.08);
-  layer(x=>{ x.strokeStyle="rgb(15,12,12)"; x.lineWidth=fwPx*.009; x.lineCap="round"; for (const L of [[33,246,161,160,159,158,157,173,133],[263,466,388,387,386,385,384,398,362]]) { x.beginPath(); L.map(Q).forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])); x.stroke(); } }, fwPx*.003, "multiply", sc("lash")<9?.3:.15);
-  layer(x=>{ x.fillStyle="rgb(200,70,80)"; poly(x,LIPS.map(Q)); x.fill(); }, fwPx*.006, "soft-light", (sex==="M"?.35:1)*(sc("lipC")<9?.3:.15));
-  // whiter teeth when the mouth is open
-  layer(x=>{ x.fillStyle="#fff"; poly(x,[78,191,80,81,82,13,312,311,310,415,308,324,318,402,317,14,87,178,88,95].map(Q)); x.fill(); }, fwPx*.004, "soft-light", .3);
-  // healthy glow: warm, brighter skin with a touch more clarity
-  { const glow=document.createElement("canvas"); glow.width=W; glow.height=H; const gx=glow.getContext("2d"); gx.fillStyle="rgb(255,214,180)"; gx.fillRect(0,0,W,H); gx.globalCompositeOperation="destination-in"; gx.drawImage(softMask,0,0);
-    g.save(); g.globalCompositeOperation="soft-light"; g.globalAlpha=.08; g.drawImage(glow,0,0); g.restore(); }
-  const ox0=Math.max(0,x0-(x1-x0)*.35), ox1=Math.min(W,x1+(x1-x0)*.35), oy0=Math.max(0,y0-(y1-y0)*.55), oy1=Math.min(H,y1+(y1-y0)*.15);
-  const crop=cv=>{ const k=document.createElement("canvas"); const s2=Math.min(2,1000/(ox1-ox0)); k.width=Math.round((ox1-ox0)*s2); k.height=Math.round((oy1-oy0)*s2); k.getContext("2d").drawImage(cv,ox0,oy0,ox1-ox0,oy1-oy0,0,0,k.width,k.height); return k; };
-  const before=crop(src), after=crop(o);
-  $("imgBefore").src=before.toDataURL("image/jpeg",.9);
-  after.toBlob(bl=>{ ascBlob=bl; if (ascURL) URL.revokeObjectURL(ascURL); ascURL=URL.createObjectURL(bl); $("imgAfter").src=ascURL; },"image/jpeg",.92);
-}
-$("cmpRange").oninput=e=>{ const x=e.target.value; $("imgAfter").style.clipPath=`inset(0 0 0 ${x}%)`; $("cmpLine").style.left=x+"%"; };
-$("saveAsc").onclick=async()=>{ if(!ascBlob) return; const file=new File([ascBlob],"ascended.jpg",{type:"image/jpeg"});
-  try{ if (navigator.canShare?.({files:[file]})) { await navigator.share({files:[file],title:"Ascended preview"}); return; } }catch(e){ if(e?.name==="AbortError") return; }
-  $("ascNote").textContent="Press and hold the image, then tap Save to Photos."; };
-
 /* ---------- free AI ascension through the Gemini app ---------- */
+// what the AI should change for each flagged measurement, by direction (low/high/bad)
+const GEMFIX = {
+  sym:{high:"subtly more balanced left and right features (brows level, even eye height, even jaw sides)"},
+  avg:{high:"more harmonious overall proportions through grooming and leanness"},
+  eyeSp:{low:"face slightly narrower at the cheeks from lower body fat so the eyes read better spaced", high:"fuller sides in the hairstyle and beard to balance wide-set eyes"},
+  eyeMo:{low:"a short chin beard (men) adding a little lower-face length", high:"a mustache or fuller lip line that visually shortens the long midface"},
+  thirds:{low:"chin hair kept short and sides fuller to shorten a long lower face", high:"a chin beard or goatee adding chin length and projection, head held upright"},
+  lower:{low:"a shorter-looking chin through grooming", high:"a mustache (men) or a defined upper lip line that shortens the long philtrum"},
+  icd:{low:"brows groomed with a clear gap at the nose bridge", high:"brows filled slightly toward the center"},
+  nose:{high:"stronger brows and a sharper jaw so the wide nose stands out less (do not reshape the nose)"},
+  noseL:{high:"textured fringe and fuller beard that balance a long nose (do not reshape the nose)"},
+  mouth:{low:"well-defined, hydrated lips"}, mouthIpd:{low:"well-defined, hydrated lips"},
+  tilt:{low:"less puffy eyelids and brow tails groomed upward so the outer eye corners look more lifted"},
+  fwhr:{low:"haircut with side volume and less height on top to widen a long narrow face", high:"haircut with height on top and short, tight sides to lengthen a wide face"},
+  jaw:{low:"visibly sharper, more defined jawline from fat loss, framed by a short boxed beard (men) or clean contour", high:"softer-looking jaw angles with face-framing hair (women)"},
+  lean:{low:"clearly leaner face: much less fat in the cheeks, jowls and under the chin, visible cheekbones and jaw angle", high:"healthy, not gaunt, facial fullness"},
+  shape:{low:"leaner, less round face; haircut with height on top", high:"side volume in the hair and a fringe to shorten a long face"},
+  upper:{low:"hair swept back to show a bit more forehead", high:"textured fringe or side-swept front hair that shortens the high forehead"},
+  lipR:{low:"lower lip looking a bit fuller", high:"upper lip looking a bit fuller"},
+  lipF:{low:"healthier, slightly fuller-looking lips"},
+  brow:{low:"brows groomed on the lower edge so they sit a touch higher (women) or kept low and full (men)", high:"brows grown in on the lower edge so they sit lower and straighter"},
+  browArch:{low:"brow peak shaped at two-thirds of the brow (women only; men keep straight brows)", high:"straighter, less arched brows"},
+  browTail:{low:"brow tails cleaned up underneath so they end level with the brow head"},
+  eyeO:{low:"well-rested, less puffy eyes that look more open", high:"fuller brows framing the eyes"},
+  fifths:{low:"eyes that look larger: well-rested, less puffy lids, denser lash line"},
+  iris:{low:"less puffy upper lids so more of the iris shows"},
+  browD:{bad:"thicker, darker, fuller eyebrows with neat shape"},
+  lash:{bad:"denser, darker eyelashes"},
+  under:{bad:"no dark circles or under-eye hollowness, rested eyes"},
+  lipC:{bad:"healthy natural lip color"},
+  sclera:{bad:"bright, clear white eye whites"},
+  contrast:{bad:"more facial contrast: darker brows and lashes, defined lips"},
+  skin:{bad:"clear skin: no acne, bumps or visible scars, smaller-looking pores, natural texture kept"},
+  tone:{bad:"even skin tone: no redness or dark patches"},
+  shine:{bad:"matte, non-oily skin with a healthy glow"},
+  lines:{bad:"smoother skin around the eyes with fewer fine lines"},
+};
+const KEEP = {browD:"eyebrows", lash:"eyelashes", skin:"skin texture", tone:"skin tone", eyeO:"eye shape", tilt:"eye tilt", jaw:"jawline", lean:"face leanness", lipF:"lips", upper:"hairline and forehead", sym:"symmetry", under:"under-eye area"};
 function ascPrompt(){
-  const {v}=last.res, male=sex==="M", need=k=>v[k]!=null&&scoreOf(k,v[k])<8;
-  const ch=[
-    male?"lean, athletic body fat around 12%: visibly sharper jawline, defined cheekbones, no softness under the chin":"lean, healthy body fat around 21%: defined cheekbones and a clean jaw and chin line",
-    "perfectly clear, even, healthy skin with natural texture (no acne, no redness, no dark spots), rested eyes with no dark circles or puffiness",
-    male?"thick, well-groomed natural eyebrows, slightly lower and straighter":"full, well-shaped brows with a soft arch and lifted tails",
-    male?"darker, denser natural eyelashes":"long, curled lashes with subtle mascara",
-    "healthy, hydrated lips with natural color", "white, clean teeth if visible", "bright white eye whites",
-    male?"a modern, flattering haircut chosen for this face shape with healthy, thick hair; a sharp, well-trimmed short beard or clean shave, whichever suits this face best":"healthy, glossy, voluminous hair in a flattering cut for this face shape",
-    "confident, upright posture with the head held level"];
-  if (need("tilt")) ch.push("slightly more lifted outer eye corners");
-  if (need("upper")) ch.push("hairstyle that balances the forehead height");
-  if (need("lipF")) ch.push("slightly fuller-looking lips");
-  if (need("sym")) ch.push("more balanced, symmetrical features");
-  return `Edit this photo. Show the SAME person after a full year of perfectly following a self-improvement plan. Keep them clearly recognizable: same identity, age, ethnicity, skin tone, eye color, face bone structure, background, camera angle and lighting. Apply these changes: ${ch.join("; ")}. Photorealistic, natural, like a real photo taken a year later; no beauty filter, no plastic skin, no cartoon look, no heavy makeup, no text.`;
+  const {v}=last.res, male=sex==="M";
+  const items=Object.entries(v).filter(([k,x])=>M[k]&&isFinite(x)).map(([k,x])=>({k,val:x,s:scoreOf(k,x)}));
+  const need=items.filter(i=>i.s<7.5).sort((a,b)=>(10-b.s)*M[b.k].w-(10-a.s)*M[a.k].w);
+  const fixes=[], seen=new Set();
+  const HAIRK=new Set(["eyeSp","fwhr","upper","noseL"]), BEARDK=new Set(["lower","eyeMo","thirds"]);
+  const FEM={lower:{high:"a defined upper lip line that visually shortens the long philtrum"},eyeMo:{high:"a fuller lip line and blush placed higher on the cheekbones to shorten the midface"},
+    thirds:{high:"a slightly more defined chin through contour",low:"soft contour under the chin tip"},jaw:{low:"a cleaner, more defined jawline from fat loss"},shape:{low:"leaner, less round face",high:"softer-looking face length"}};
+  for (const n of need){ if (HAIRK.has(n.k) || (male&&BEARDK.has(n.k))) continue;
+    const f=(!male&&FEM[n.k])||GEMFIX[n.k]; if(!f) continue;
+    const dir = M[n.k].lin ? "bad" : n.k==="sym"||n.k==="avg" ? "high" : (n.val<M[n.k].ideal[sex]?"low":"high");
+    const t=f[dir]; if (t && !seen.has(t)) { seen.add(t); fixes.push(t); } }
+  const keep=[...new Set(items.filter(i=>i.s>=8.5&&KEEP[i.k]).map(i=>KEEP[i.k]))];
+  // one hairstyle and facial-hair choice from the face shape
+  const sc=k=>v[k]!=null?scoreOf(k,v[k]):10, lo=k=>v[k]!=null&&v[k]<M[k].ideal[sex];
+  let hair;
+  if (sc("upper")<7.5 && lo("upper")) hair = male?"a short textured cut swept up and back that shows some forehead":"hair swept back or a high ponytail-friendly cut that shows some forehead";
+  else if (sc("upper")<7.5 && !lo("upper")) hair = male?"a textured crop or soft textured fringe":"long layers with curtain bangs";
+  else if ((sc("shape")<7.5&&lo("shape")) || (sc("fwhr")<7.5&&!lo("fwhr"))) hair = male?"short, tight sides with textured height on top (quiff or textured crop)":"long layers with volume at the crown and a side part";
+  else if ((sc("shape")<7.5&&!lo("shape")) || (sc("fwhr")<7.5&&lo("fwhr"))) hair = male?"a medium-length cut with fuller sides and a light fringe, no tall quiff":"shoulder-length hair with side volume and a fringe";
+  else hair = male?"a clean, modern cut that keeps the current length and shape, freshly styled":"the current length freshly cut and styled with healthy shine";
+  const longLip = (sc("lower")<7.5&&!lo("lower")) || (sc("eyeMo")<7.5&&!lo("eyeMo"));
+  const beard = !male ? "" : (sc("jaw")<7.5&&lo("jaw")) || (sc("thirds")<7.5&&!lo("thirds")) || (sc("eyeMo")<7.5&&lo("eyeMo"))
+    ? `a short, sharply lined boxed beard that squares the jaw and adds chin length${longLip?", with a full mustache":""}`
+    : (sc("thirds")<7.5&&lo("thirds")) || (sc("lower")<7.5&&lo("lower")) ? `short stubble kept very short on the chin, fuller on the sides${longLip?", with a mustache":""}`
+    : longLip ? "a short, neat beard with a full mustache that shortens the upper lip"
+    : (sc("lean")<7.5&&lo("lean")) ? "a short, well-defined stubble beard with a clean neckline" : "whichever suits this face better: a clean shave or a short, neat stubble";
+  fixes.splice(8);
+  const top = fixes.length ? fixes.map((f,i)=>`${i+1}. ${f}`).join("\n") : "1. small refinements only: this face already measures close to ideal";
+  return `Edit this photo to show the SAME person after a year of following their personal improvement plan.
+
+Fix ONLY these points from their face analysis, in order of importance:
+${top}
+
+Hair: ${hair}, healthy and thick.${beard ? `\nFacial hair: ${beard}.` : ""}
+${keep.length ? `Keep these unchanged, they are already strengths: ${keep.join(", ")}.\n` : ""}Also: photo taken standing, camera at eye level from about 1.5 m, soft even daylight from the front, neutral relaxed face with mouth closed, upright posture.
+
+Keep the person clearly recognizable: same identity, age, ethnicity, natural skin tone, eye color and bone structure. Soft-tissue changes from fat loss, grooming and skincare are allowed; do not change the skull or nose shape. Photorealistic, like a real photo; no beauty filter, no plastic skin, no heavy makeup, no text.`;
 }
 $("openGem").addEventListener("click", ()=>{
   const t=$("gemPrompt").value; const st=$("gemStatus");
@@ -838,7 +797,7 @@ $("openGem").addEventListener("click", ()=>{
 $("savePhoto").onclick = ()=>{ if (!last) return; const st=$("gemStatus");
   last.canvas.toBlob(async b=>{ const file=new File([b],"my-selfie.jpg",{type:"image/jpeg"});
     try { if (navigator.canShare?.({files:[file]})) { await navigator.share({files:[file]}); st.classList.remove("err"); st.textContent="Pick Save Image to put it in your Photos."; return; } } catch(e){ if (e?.name==="AbortError") return; }
-    const img=$("imgBefore"); img.scrollIntoView({block:"center"}); st.classList.remove("err"); st.textContent="Press and hold the photo above, then tap Save to Photos."; },"image/jpeg",.92); };
+    const img=$("selfieImg"); img.src=URL.createObjectURL(b); img.hidden=false; img.scrollIntoView({block:"center"}); st.classList.remove("err"); st.textContent="Press and hold the photo below, then tap Save to Photos."; },"image/jpeg",.92); };
 
 function drawOverlay(){
   const {canvas:c,res}=last, v=$("view"), P=res.P;
