@@ -172,6 +172,22 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <p class="note" id="planNote"></p>
     </div>
 
+    <div class="panel" id="askPanel">
+      <h2>Ask a question</h2>
+      <p class="note">Ask anything about your face, health or plan. Your question is sent together with your scan results to a free AI chat, so the answer is about you, not people in general.</p>
+      <div class="row" id="askChips"></div>
+      <label class="note" for="askQ">Your question</label>
+      <textarea id="askQ" rows="4" placeholder="Type your question" style="font:15px/1.5 var(--body);padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);width:100%;resize:vertical"></textarea>
+      <p class="note">Tap where to ask. The question and your results are copied; paste them in the chat and send.</p>
+      <div class="row">
+        <a class="btn primary askGo" href="https://gemini.google.com/app" target="_blank" rel="noopener">Ask Gemini</a>
+        <a class="btn askGo" href="https://chatgpt.com/" target="_blank" rel="noopener">Ask ChatGPT</a>
+        <a class="btn askGo" href="https://claude.ai/new" target="_blank" rel="noopener">Ask Claude</a>
+      </div>
+      <p class="status" id="askStatus" role="status"></p>
+      <p class="note">For anything medical (eyes, spine, skin conditions), use the answer to prepare for a doctor's visit, not instead of one.</p>
+    </div>
+
     <div class="panel">
       <h2>Every measurement, worst first</h2>
       <div id="findings"></div>
@@ -798,6 +814,33 @@ $("savePhoto").onclick = ()=>{ if (!last) return; const st=$("gemStatus");
   last.canvas.toBlob(async b=>{ const file=new File([b],"my-selfie.jpg",{type:"image/jpeg"});
     try { if (navigator.canShare?.({files:[file]})) { await navigator.share({files:[file]}); st.classList.remove("err"); st.textContent="Pick Save Image to put it in your Photos."; return; } } catch(e){ if (e?.name==="AbortError") return; }
     const img=$("selfieImg"); img.src=URL.createObjectURL(b); img.hidden=false; img.scrollIntoView({block:"center"}); st.classList.remove("err"); st.textContent="Press and hold the photo below, then tap Save to Photos."; },"image/jpeg",.92); };
+
+/* ---------- ask a question ---------- */
+const ASK_EXAMPLES=["I have scoliosis and my eyes look uneven. Does it play a role, and what can I do?","One of my eyes looks smaller than the other. Why, and how can I fix it?","Which haircut suits my face shape best?","What should I eat to lose face fat?","Could I become a model? What should I work on first?"];
+$("askChips").replaceChildren(...ASK_EXAMPLES.map(q=>{ const b=document.createElement("button"); b.type="button"; b.className="btn"; b.style.cssText="min-height:36px;padding:6px 12px;font-size:13px;font-weight:500"; b.textContent=q; b.onclick=()=>{ $("askQ").value=q; $("askQ").focus(); }; return b; }));
+function askPrompt(q){
+  let ctx="(No scan yet.)";
+  if (last){ const {v,warns}=last.res;
+    const items=Object.entries(v).filter(([k,x])=>M[k]&&isFinite(x)).map(([k,x])=>({k,x,s:scoreOf(k,x)})).sort((a,b)=>a.s-b.s);
+    const line=i=>`- ${M[i.k].name}: ${M[i.k].fmt(i.x)} (score ${i.s.toFixed(1)}/10; ${M[i.k].lin?"best "+M[i.k].fmt(M[i.k].lin[0]):i.k==="sym"?"ideal under 1.5% off":"ideal "+M[i.k].fmt(M[i.k].ideal[sex])})`;
+    ctx=`Sex: ${sex==="M"?"male":"female"}. Overall rating: ${$("bigScore").textContent.replace("/10","")}/10.
+Weakest measurements:
+${items.filter(i=>i.s<7.5).slice(0,10).map(line).join("\n")||"- none"}
+Strengths:
+${items.filter(i=>i.s>=8.5).slice(0,8).map(line).join("\n")||"- none"}${warns.length?"\nPhoto issues: "+warns.join(" "):""}`; }
+  return `I used a face analysis app (MediaPipe face landmarks, attractiveness research ratios like symmetry, facial thirds, canthal tilt, fWHR, plus skin and brow analysis). My results:
+${ctx}
+
+My question: ${q}
+
+Answer for my specific case, using the results above. Be honest and practical: say what is realistic, what I can change myself, what needs a doctor (and which kind), and what to avoid. Keep it under 300 words.`;
+}
+for (const a of document.querySelectorAll(".askGo")) a.addEventListener("click", e=>{
+  const q=$("askQ").value.trim(), st=$("askStatus");
+  if (!q){ e.preventDefault(); st.classList.add("err"); st.textContent="Type a question first."; $("askQ").focus(); return; }
+  navigator.clipboard?.writeText(askPrompt(q)).then(()=>{ st.classList.remove("err"); st.textContent="Copied. Paste it in the chat and send."; })
+    .catch(()=>{ e.preventDefault(); st.classList.add("err"); st.textContent="Couldn't copy here. Copy your question manually and paste it in the chat."; });
+});
 
 function drawOverlay(){
   const {canvas:c,res}=last, v=$("view"), P=res.P;
