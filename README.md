@@ -4,6 +4,8 @@ A phone web app that rates a face from 0 to 10 from a selfie, using facial-propo
 
 Everything runs on the device with Google's MediaPipe Face Landmarker. No photo leaves the phone.
 
+You also get a written plan with a realistic timeline and an "ascended" preview of your face with every tip applied.
+
 ## Install on iPhone
 1. Open the GitHub Pages link in **Safari**.
 2. Tap **Share**, then **Add to Home Screen**.
