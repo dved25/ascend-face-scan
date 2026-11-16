@@ -135,6 +135,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <div id="warns" style="display:flex;flex-direction:column;gap:8px"></div>
       <div class="bars" id="bars"></div>
       <p class="note" id="scoreNote"></p>
+      <p class="note">The score is only as good as the photo. Close-up selfies, lying down, low angles and harsh light can cost several points. For a fair score: stand facing a window, back camera on a timer at about 1.5 m, 2x zoom, neutral face.</p>
     </div>
 
     <div class="panel" id="ascPanel">
@@ -196,7 +197,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
   <section class="panel" aria-labelledby="sci-h">
     <h2 id="sci-h">What gets measured</h2>
-    <p class="note">Ideal values are calibrated to MediaPipe's averaged face mesh (averageness itself predicts attractiveness, Langlois &amp; Roggman 1990), then shifted where studies show attractive faces differ from average. Measurements explain part of attractiveness, not all of it; treat the rating as a guide.</p>
+    <p class="note">Ideal values are calibrated to MediaPipe's averaged face mesh (averageness itself predicts attractiveness, Langlois &amp; Roggman 1990), then shifted where studies show attractive faces differ from average. The 0 to 10 rating itself is learned from 5,500 faces rated by about 60 people each (SCUT-FBP5500 dataset); it matches their ratings with a 0.77 correlation. The raters were mostly young Chinese adults and the faces Asian and white, so treat it as a guide.</p>
     <div class="tablewrap"><table id="sciTable"><thead><tr><th>Measure</th><th>Ideal (M)</th><th>Ideal (F)</th><th>Source</th></tr></thead><tbody></tbody></table></div>
   </section>
 
@@ -226,103 +227,103 @@ setSex(sex);
 
 /* ---------- metric definitions: ideal per sex, tolerance below/above, weight, advice ---------- */
 const M = {
-  sym:{name:"Facial symmetry",fmt:v=>(v*100).toFixed(1)+"% off",ideal:{M:0,F:0},tl:.04,th:.04,w:2,grp:"sym",
+  sym:{name:"Facial symmetry",fmt:v=>(v*100).toFixed(1)+"% off",ideal:{M:0,F:0},tl:0.04,th:0.05,w:1.6,grp:"sym",
     src:"Grammer & Thornhill 1994; Rhodes 2006 meta-analysis",
     what:"How closely the left half of your face mirrors the right, measured across 16 landmark pairs.",
     high:["Retake with your head perfectly straight first: a few degrees of turn reads as asymmetry.","Chew evenly on both sides and alternate the side you sleep on, or sleep on your back.","Shape brows so both sit at the same height; part your hair on the side that balances the heavier half.","Men: trim the beard slightly fuller on the weaker jaw side.","A shifted bite or uneven jaw is worth an orthodontist check."]},
-  eyeSp:{name:"Eye spacing vs face width",fmt:v=>v.toFixed(3),ideal:{M:.425,F:.43},tl:.022,th:.022,w:1.4,grp:"prop",
+  eyeSp:{name:"Eye spacing vs face width",fmt:v=>v.toFixed(3),ideal:{M:.425,F:.43},tl:0.03,th:0.03,w:1.0,grp:"prop",
     src:"Pallett, Link & Lee 2010, the 46% interpupillary ratio",
     what:"Distance between pupils divided by face width. Attractive faces cluster tightly around one value.",
     low:["Your face reads wide for your eye spacing. Lowering body fat narrows the face more than anything else.","Haircut: volume on top, tight on the sides; avoid wide, puffy sides.","Groom brows so the gap between them stays clear; extend the outer tails slightly.","Women: wing or smoke the outer third of the eye to visually widen spacing."],
     high:["Your eyes read wide-set for your face width. Side volume in the haircut and a fuller beard widen the lower face.","Fill brows slightly closer to the nose bridge.","Women: inner-corner liner or shadow brings the eyes visually closer."]},
-  eyeMo:{name:"Eye to mouth distance",fmt:v=>v.toFixed(3),ideal:{M:.39,F:.385},tl:.028,th:.028,w:1,grp:"prop",
+  eyeMo:{name:"Eye to mouth distance",fmt:v=>v.toFixed(3),ideal:{M:.39,F:.385},tl:0.04,th:0.05,w:0.5,grp:"prop",
     src:"Pallett, Link & Lee 2010, the 36% vertical ratio",
     what:"Vertical eye-to-mouth distance as a share of face length.",
     low:["Your features sit compact vertically. Men: a short chin beard adds lower length.","A haircut with height on top balances a compact middle."],
     high:["Your midface reads long. Men: a mustache shortens it visually; keep the chin beard short.","Women: blush placed higher on the cheekbone and a fuller lip line shorten the midface."]},
-  thirds:{name:"Midface vs lower face",fmt:v=>v.toFixed(2),ideal:{M:.92,F:.97},tl:.1,th:.1,w:1.2,grp:"prop",
+  thirds:{name:"Midface vs lower face",fmt:v=>v.toFixed(2),ideal:{M:.92,F:.97},tl:0.15,th:0.18,w:0.5,grp:"prop",
     src:"Farkas neoclassical canons (equal facial thirds)",
     what:"Brow-to-nose-base height against nose-base-to-chin height. Ideal faces split into near-equal thirds.",
     low:["Your lower face is long. Men: keep the chin beard short and the sides fuller.","Women: contour just under the chin tip to shorten it."],
     high:["Your lower face is short or the chin is recessed. Men: a chin beard or goatee adds length and projection.","Stand and sit with your head back over your shoulders; forward head posture shortens the chin.","A recessed chin with a bad bite: see an orthodontist or maxillofacial surgeon. Mewing has no solid evidence for adults."]},
-  lower:{name:"Upper lip vs chin",fmt:v=>v.toFixed(2),ideal:{M:.39,F:.41},tl:.07,th:.07,w:1,grp:"prop",
+  lower:{name:"Upper lip vs chin",fmt:v=>v.toFixed(2),ideal:{M:.39,F:.41},tl:0.1,th:0.12,w:0.5,grp:"prop",
     src:"Farkas canons, 1:2 upper lip to lower lip-and-chin",
     what:"Nose base to mouth, against mouth to chin.",
     low:["Your chin is long relative to the upper lip. Men: keep chin hair short; women: light contour on the chin tip."],
     high:["Your philtrum reads long. Men: a mustache hides it.","Women: line the upper lip right on the edge and add gloss to the center to make it look fuller."]},
-  icd:{name:"Gap between the eyes",fmt:v=>v.toFixed(2),ideal:{M:1.43,F:1.43},tl:.14,th:.14,w:1,grp:"prop",
+  icd:{name:"Gap between the eyes",fmt:v=>v.toFixed(2),ideal:{M:1.43,F:1.43},tl:0.2,th:0.2,w:0.5,grp:"prop",
     src:"Farkas canons, intercanthal width equals eye width",
     what:"Space between the inner corners of the eyes divided by eye width.",
     low:["Close-set eyes: keep the brow gap open, light shadow on the outer corners, nothing dark near the nose."],
     high:["Wide-set eyes: fill brows a little toward the center; women: inner-corner liner."]},
-  nose:{name:"Nose width",fmt:v=>v.toFixed(2),ideal:{M:1.3,F:1.24},tl:.14,th:.14,w:1,grp:"prop",
+  nose:{name:"Nose width",fmt:v=>v.toFixed(2),ideal:{M:1.3,F:1.24},tl:0.25,th:0.15,w:0.8,grp:"prop",
     src:"Farkas canons, nose width equals intercanthal width",
     what:"Width of the nostrils against the gap between the eyes.",
     low:["Your nose is narrow; that reads as refined. Nothing to fix."],
     high:["Your nose reads wide. Strong brows and a defined jaw shift attention away from it.","Women: contour both sides of the nose bridge.","Permanent change is rhinoplasty; talk to a board-certified surgeon, not a forum."]},
-  mouth:{name:"Mouth width",fmt:v=>v.toFixed(2),ideal:{M:1.4,F:1.45},tl:.15,th:.2,w:.7,grp:"prop",
+  mouth:{name:"Mouth width",fmt:v=>v.toFixed(2),ideal:{M:1.4,F:1.45},tl:0.2,th:0.35,w:0.4,grp:"prop",
     src:"Farkas canons, mouth width about 1.5 x nose width",
     what:"Width of the mouth corners against nose width.",
     low:["Small mouth for your nose. Keep lips moisturized; women: extend the liner a hair at the corners."],
     high:["Wide mouth. It reads expressive; nothing to fix."]},
-  tilt:{name:"Canthal tilt",fmt:v=>v.toFixed(1)+"°",ideal:{M:5,F:6.5},tl:3,th:6,w:1.2,grp:"prop",
+  tilt:{name:"Canthal tilt",fmt:v=>v.toFixed(1)+"°",ideal:{M:5,F:6.5},tl:3.5,th:14,w:1.2,grp:"prop",
     src:"Rhee et al. 2012; positive tilt rated more attractive",
     what:"Angle from inner to outer eye corner. A slight upward tilt reads alert and attractive.",
     low:["Your outer eye corners sit low. Sleep 7 to 9 hours and cut late salt and alcohol to reduce puffiness that drags corners down.","Shape brow tails so they lift toward the temple, never droop below the inner brow.","Women: wing liner upward from the outer corner; lift lashes with a curler.","Leaner face fat exposes the eye area. Surgical canthoplasty exists but carries real risk."],
     high:["Strong upward tilt. That is a plus."]},
-  fwhr:{name:"Face width to height (fWHR)",fmt:v=>v.toFixed(2),ideal:{M:1.95,F:1.85},tl:.15,th:.2,w:1,grp:"prop",
+  fwhr:{name:"Face width to height (fWHR)",fmt:v=>v.toFixed(2),ideal:{M:1.95,F:1.85},tl:0.25,th:0.3,w:0.3,grp:"prop",
     src:"Carré & McCormick 2008; Stirrat & Perrett 2010",
     what:"Cheekbone width over brow-to-upper-lip height. Higher reads more robust and masculine.",
     low:["Your face reads long and narrow. Haircut with side volume and less height on top.","Men: grow the beard fuller on the sides of the jaw.","Training the neck and traps frames a narrow face better."],
     high:["Your face reads wide. Height on top of the haircut and slimmer sides lengthen it.","Women: long layers and a slight side part."]},
-  jaw:{name:"Jaw width",fmt:v=>v.toFixed(2),ideal:{M:.81,F:.76},tl:.045,th:.06,w:1.2,grp:"prop",
+  jaw:{name:"Jaw width",fmt:v=>v.toFixed(2),ideal:{M:.81,F:.76},tl:0.06,th:0.1,w:1.0,grp:"prop",
     src:"Dimorphism studies (Little et al. 2011); bigonial vs bizygomatic width",
     what:"Width at the jaw angles divided by cheekbone width.",
     low:["Your jaw reads narrow. Get lean (about 12 to 15% body fat for men) so the jaw angle shows.","Men: a short boxed beard squares the jaw line.","Fix forward head posture; it blurs the jaw and neck line.","Harder chewing (sugar-free gum) can build the masseter slightly; evidence is thin, stop if your jaw clicks or aches."],
     high:["Your jaw reads wide. For men that is a strength.","Women: face-framing layers at jaw level and contour under the jaw angles soften it."]},
-  lipR:{name:"Lower vs upper lip",fmt:v=>v.toFixed(2),ideal:{M:1.5,F:1.55},tl:.35,th:.5,w:.6,grp:"feat",
+  lipR:{name:"Lower vs upper lip",fmt:v=>v.toFixed(2),ideal:{M:1.5,F:1.55},tl:0.4,th:0.8,w:0.3,grp:"feat",
     src:"Penna et al. 2015; Popenko et al. 2017, ideal ratio near 1:1.6",
     what:"Lower lip height over upper lip height.",
     low:["Your upper lip is full relative to the lower. Women: a lighter shade on the upper lip, gloss on the lower."],
     high:["Your upper lip is thin relative to the lower. Exfoliate and moisturize; women: line the upper edge precisely."]},
-  lipF:{name:"Lip fullness",fmt:v=>v.toFixed(2),ideal:{M:.25,F:.29},tl:.06,th:.08,w:.8,grp:"feat",
+  lipF:{name:"Lip fullness",fmt:v=>v.toFixed(2),ideal:{M:.25,F:.29},tl:0.06,th:0.3,w:0.8,grp:"feat",
     src:"Popenko et al. 2017; lip fullness and femininity",
     what:"Total lip height over mouth width.",
     low:["Thin lips. Lip balm with SPF daily, gentle exfoliation, no smoking.","Women: liner just on the outer edge plus gloss. Fillers are an option with a qualified injector."],
     high:["Full lips. A plus for most people."]},
-  brow:{name:"Brow height",fmt:v=>v.toFixed(2),ideal:{M:.62,F:.76},tl:.12,th:.12,w:.8,grp:"feat",
+  brow:{name:"Brow height",fmt:v=>v.toFixed(2),ideal:{M:.62,F:.76},tl:0.15,th:0.15,w:0.4,grp:"feat",
     src:"Facial dimorphism: lower brows read masculine, higher brows feminine (Campbell et al. 1999)",
     what:"Gap from the brow to the upper eyelid, relative to eye width.",
     low:["Your brows sit low. For men that reads intense, which is good; for women, tweeze only the lower edge and try brow lamination for lift."],
     high:["Your brows sit high. Men: stop plucking the lower edge and let it grow 8 to 12 weeks; a fuller lower line lowers the brow visually.","Women: this reads feminine and open."]},
-  eyeO:{name:"Eye openness",fmt:v=>v.toFixed(2),ideal:{M:.25,F:.29},tl:.045,th:.05,w:.8,grp:"feat",
+  eyeO:{name:"Eye openness",fmt:v=>v.toFixed(2),ideal:{M:.25,F:.29},tl:0.05,th:0.15,w:0.8,grp:"feat",
     src:"Eye size and femininity (Cunningham 1986); narrower eyes read masculine",
     what:"Eye height over eye width.",
     low:["Narrow or hooded eyes. Reduce puffiness: sleep, less late salt, cold compress in the morning.","Women: curl lashes, tightline the upper lid, keep shadow on the crease."],
     high:["Round open eyes. For women a plus; men can let brows grow fuller to frame them."]},
-  shape:{name:"Face length vs width",fmt:v=>v.toFixed(2),ideal:{M:1.22,F:1.24},tl:.09,th:.09,w:.8,grp:"prop",
+  shape:{name:"Face length vs width",fmt:v=>v.toFixed(2),ideal:{M:1.22,F:1.24},tl:0.12,th:0.12,w:0.5,grp:"prop",
     src:"Oval face proportion; Farkas anthropometry",
     what:"Forehead-top-to-chin length over cheekbone width.",
     low:["Round or short face. Lower body fat, height on top of the haircut, a chin beard for men."],
     high:["Long face. Side volume, a fringe, no tall quiff; men keep the chin beard short."]},
-  upper:{name:"Forehead height",fmt:v=>v.toFixed(2),ideal:{M:1.0,F:.97},tl:.15,th:.15,w:.8,grp:"hair",
+  upper:{name:"Forehead height",fmt:v=>v.toFixed(2),ideal:{M:1.0,F:.97},tl:0.18,th:0.18,w:0.6,grp:"hair",
     src:"Farkas canons, upper third equals middle third",
     what:"Hairline-to-brow height against brow-to-nose-base height. Hairline found by color edge, so it is an estimate.",
     low:["Low hairline. Swept-back or textured styles that show some forehead balance it."],
     high:["High hairline or large forehead. A fringe, textured crop or side-swept front shortens it.","Check the temples for recession. If it is thinning, see a doctor early: finasteride and minoxidil have the best evidence."]},
-  browD:{name:"Brow density",fmt:v=>v.toFixed(2),ideal:{M:.55,F:.6},lin:[.55,.92],w:1,grp:"hair",
+  browD:{name:"Brow density",fmt:v=>v.toFixed(2),ideal:{M:.55,F:.6},lin:[.55,.92],w:0.7,grp:"hair",
     src:"Facial contrast (Russell 2009); brow thickness and dimorphism",
     what:"How dark your brows are against the forehead skin. Denser, darker brows add facial contrast.",
     bad:["Let brows grow out untouched for 8 to 12 weeks, then shape.","Clear brow gel daily; tint every 4 to 6 weeks if they are light.","Women: fill sparse gaps with pencil strokes or pomade; lamination for fullness.","For thin brows, minoxidil on brows is used off-label; ask a dermatologist."]},
-  lash:{name:"Lash line",fmt:v=>v.toFixed(2),ideal:{M:.45,F:.45},lin:[.45,.85],w:.8,grp:"hair",
+  lash:{name:"Lash line",fmt:v=>v.toFixed(2),ideal:{M:.45,F:.45},lin:[.45,.85],w:0.5,grp:"hair",
     src:"Eye contrast and lash length preferences (Adam 2021; Russell 2009)",
     what:"How dark the upper lash line is against the eyelid skin. Approximates lash density.",
     bad:["Women: curl, then two coats of mascara; tightline the upper waterline.","Men: lash tint is a subtle, invisible-looking upgrade if lashes are light.","Bimatoprost (Latisse) is the only proven lash-growth drug and needs a prescription.","Remove makeup gently and stop rubbing your eyes; it breaks lashes."]},
-  under:{name:"Under-eye darkness",fmt:v=>v.toFixed(2),ideal:{M:.97,F:.97},lin:[.93,.62],w:.5,grp:"skin",
+  under:{name:"Under-eye darkness",fmt:v=>v.toFixed(2),ideal:{M:.97,F:.97},lin:[.93,.62],w:0.6,grp:"skin",
     src:"Perceived health and fatigue cues (Sundelin et al. 2013)",
     what:"Brightness under the eyes compared with the cheek.",
     bad:["Sleep 7 to 9 hours on a fixed schedule.","Treat allergies; congestion darkens the under-eye.","Cold compress or caffeine eye gel in the morning; SPF and a retinol eye cream long term.","Concealer one shade lighter, with a peach corrector if the circles look blue."]},
-  lipC:{name:"Lip color",fmt:v=>v.toFixed(1),ideal:{M:12,F:12},lin:[12,2],w:.5,grp:"skin",
+  lipC:{name:"Lip color",fmt:v=>v.toFixed(1),ideal:{M:12,F:12},lin:[12,2],w:0.4,grp:"skin",
     src:"Lip redness and attractiveness (Stephen & McKeegan 2010)",
     what:"How much redder the lips are than the surrounding skin.",
     bad:["Hydrate, exfoliate lips weekly, balm with SPF.","A tinted balm close to your natural lip color adds contrast without looking made up."]},
@@ -330,66 +331,72 @@ const M = {
     src:"Skin homogeneity (Fink et al. 2001; Jones et al. 2004)",
     what:"Fine-grain roughness on cheeks and forehead: pores, bumps, acne, scarring. Photo quality affects this.",
     bad:["Morning: gentle cleanser, moisturizer, SPF 30 or more every day.","Night: a retinoid (adapalene or retinol) 2 to 3 nights a week, building up.","Acne: benzoyl peroxide wash plus adapalene; see a dermatologist if it scars.","Change pillowcases twice a week and keep hands off your face."]},
-  tone:{name:"Skin evenness",fmt:v=>(v*100).toFixed(1),ideal:{M:.03,F:.03},lin:[.03,.13],w:.6,grp:"skin",
+  tone:{name:"Skin evenness",fmt:v=>(v*100).toFixed(1),ideal:{M:.03,F:.03},lin:[.03,.13],w:0.6,grp:"skin",
     src:"Skin color distribution (Fink et al. 2006)",
     what:"How even the tone is between forehead and cheeks. Shadows and side light inflate it.",
     bad:["Daily SPF stops patches from darkening further.","Vitamin C in the morning, azelaic acid or niacinamide for redness and dark spots.","Retake facing a window to rule out uneven light."]},
-  avg:{name:"Facial averageness",fmt:v=>v.toFixed(3),ideal:{M:.05,F:.05},tl:.2,th:.035,w:1.5,grp:"sym",
+  avg:{name:"Facial averageness",fmt:v=>v.toFixed(3),ideal:{M:.05,F:.05},tl:0.2,th:0.07,w:0.6,grp:"sym",
     src:"Langlois & Roggman 1990; Rhodes 2006 meta-analysis",
     what:"How close your overall face shape is to the averaged face of many people. Average faces are consistently rated more attractive.",
     high:["Averageness is mostly bone structure. Work on the ratios flagged below; each one you balance with hair, facial hair or makeup moves you closer to the average shape.","Getting lean removes soft-tissue distortion, the part of averageness you can change."]},
-  fifths:{name:"Eye width vs face width",fmt:v=>v.toFixed(3),ideal:{M:.185,F:.19},tl:.015,th:.02,w:.8,grp:"prop",
+  fifths:{name:"Eye width vs face width",fmt:v=>v.toFixed(3),ideal:{M:.185,F:.19},tl:0.02,th:0.05,w:0.6,grp:"prop",
     src:"Farkas canons, rule of facial fifths",
     what:"An ideal face is five eye-widths wide. This compares one eye's width with face width.",
     low:["Your eyes read small for your face. Losing face fat narrows the face around them.","Women: tightline the upper lid, curl lashes, nude liner on the lower waterline.","Men: keep brows full but tidy so they frame the eye."],
     high:["Large eyes for your face width. A plus, especially for women."]},
-  noseL:{name:"Nose length",fmt:v=>v.toFixed(3),ideal:{M:.29,F:.285},tl:.025,th:.025,w:.7,grp:"prop",
+  noseL:{name:"Nose length",fmt:v=>v.toFixed(3),ideal:{M:.29,F:.285},tl:0.04,th:0.04,w:0.4,grp:"prop",
     src:"Farkas anthropometry; nose length about a third of face height",
     what:"Nose bridge to nose base, as a share of face length.",
     low:["Short nose. Reads youthful; nothing to fix."],
     high:["Long nose. Avoid center parts and slicked-back hair that lead the eye down the nose; textured fringe and a fuller beard balance it.","Women: a little contour under the nose tip shortens it."]},
-  mouthIpd:{name:"Mouth width vs eye spacing",fmt:v=>v.toFixed(2),ideal:{M:1.02,F:1.05},tl:.1,th:.12,w:.6,grp:"prop",
+  mouthIpd:{name:"Mouth width vs eye spacing",fmt:v=>v.toFixed(2),ideal:{M:1.02,F:1.05},tl:0.15,th:0.2,w:0.3,grp:"prop",
     src:"Farkas canons; mouth corners fall near the pupil lines",
     what:"Mouth width divided by the distance between the pupils.",
     low:["Narrow mouth. Keep lips moisturized and defined; women can extend liner slightly at the corners."],
     high:["Wide mouth. Reads expressive and is often rated attractive; nothing to fix."]},
-  lean:{name:"Facial leanness",fmt:v=>v.toFixed(3),ideal:{M:3.66,F:3.62},tl:.05,th:.14,w:1.3,grp:"prop",
+  lean:{name:"Facial leanness",fmt:v=>v.toFixed(3),ideal:{M:3.66,F:3.62},tl:0.06,th:0.3,w:1.5,grp:"prop",
     src:"Coetzee et al. 2009; facial adiposity predicts attractiveness and health",
     what:"Perimeter-to-area ratio of your face outline. Leaner faces have a more angular outline and score higher.",
     low:["Your face reads soft or full. This is the fastest real change you can make: a steady calorie deficit, high protein and daily steps.","Cut liquid calories and alcohol; both bloat the face.","Lower salt in the evening to reduce morning puffiness."],
     high:["Very lean outline. Don't drop further: gaunt faces read older and tired."]},
-  browArch:{name:"Brow arch",fmt:v=>v.toFixed(2),ideal:{M:.17,F:.26},tl:.07,th:.08,w:.6,grp:"feat",
+  browArch:{name:"Brow arch",fmt:v=>v.toFixed(2),ideal:{M:.17,F:.26},tl:0.1,th:0.12,w:0.3,grp:"feat",
     src:"Gunter & Antrobus 1997 ideal brow; flatter brows read masculine",
     what:"How high the brow peak rises above the line from head to tail.",
     low:["Flat brows. Men: this reads masculine, keep it. Women: shape the peak at two-thirds of the brow, over the outer edge of the iris."],
     high:["High arch. Men: soften it by letting the top edge at the peak grow in. Women: this reads feminine."]},
-  browTail:{name:"Brow tail position",fmt:v=>v.toFixed(2),ideal:{M:.1,F:.18},tl:.15,th:.2,w:.6,grp:"feat",
+  browTail:{name:"Brow tail position",fmt:v=>v.toFixed(2),ideal:{M:.1,F:.18},tl:0.2,th:0.25,w:0.3,grp:"feat",
     src:"Gunter & Antrobus 1997; drooping brow tails read tired and older",
     what:"How high the brow tail sits compared with the brow head.",
     low:["Your brow tails droop. Remove the stray hairs under the tail so it ends level with or slightly above the head.","Sleep and less puffiness help too; a cosmetic brow lift is the permanent option."],
     high:["Lifted tails. Reads alert; nothing to fix."]},
-  iris:{name:"Iris size",fmt:v=>v.toFixed(2),ideal:{M:.44,F:.45},tl:.04,th:.08,w:.5,grp:"feat",
+  iris:{name:"Iris size",fmt:v=>v.toFixed(2),ideal:{M:.44,F:.45},tl:0.05,th:0.15,w:0.5,grp:"feat",
     src:"Iris and limbal ring visibility signal youth (Peshek et al. 2011)",
     what:"Visible iris diameter relative to eye width.",
     low:["Less visible iris. Reduce upper-lid puffiness with sleep and less late salt; women: curl lashes and use a light shadow on the lid to open the eye.","Avoid decorative circle lenses from unlicensed sellers; they can damage the cornea."],
     high:["Large visible iris. Reads youthful."]},
-  sclera:{name:"Eye whites",fmt:v=>v.toFixed(1),ideal:{M:6,F:6},lin:[6,14],w:.7,grp:"feat",
+  sclera:{name:"Eye whites",fmt:v=>v.toFixed(1),ideal:{M:6,F:6},lin:[6,14],w:0.5,grp:"feat",
     src:"Provine et al. 2011; Russell et al. 2014, redder sclera rated less healthy and attractive",
     what:"How red the whites of your eyes are.",
     bad:["Sleep 7 to 9 hours; red eyes are the first sign of short sleep.","Use preservative-free lubricating drops; take screen breaks (20 seconds every 20 minutes).","Treat allergies and avoid smoke. See an eye doctor if redness lasts."]},
-  contrast:{name:"Facial contrast",fmt:v=>v.toFixed(2),ideal:{M:.3,F:.34},lin:[.34,.1],w:.9,grp:"feat",
+  contrast:{name:"Facial contrast",fmt:v=>v.toFixed(2),ideal:{M:.3,F:.34},lin:[.34,.1],w:0.8,grp:"feat",
     src:"Russell 2009; Porcheron et al. 2013, contrast of eyes, brows and lips signals youth and beauty",
     what:"How much your eyes, brows and lips stand out from your skin.",
     bad:["Darken and fill your brows; they are the biggest contrast lever.","Women: mascara, a tightline and a lip tint near your natural lip color.","Men: a lash and brow tint, and a well-defined beard line, raise contrast without looking made up.","Avoid washing out your face: pick clothing colors that contrast with your skin."]},
-  shine:{name:"Skin shine",fmt:v=>(v*100).toFixed(1)+"%",ideal:{M:.01,F:.01},lin:[.01,.12],w:.6,grp:"skin",
+  shine:{name:"Skin shine",fmt:v=>(v*100).toFixed(1)+"%",ideal:{M:.01,F:.01},lin:[.01,.12],w:0.5,grp:"skin",
     src:"Skin gloss perception (Igarashi et al. 2007); oily shine reads unhealthy",
     what:"Share of forehead, nose and cheek skin that shows oily glare.",
     bad:["Gel moisturizer instead of a heavy cream; niacinamide serum to reduce oil.","Mattifying sunscreen in the morning; blotting papers during the day.","Don't strip the skin with harsh cleansers; it makes oil production worse."]},
-  lines:{name:"Fine lines",fmt:v=>(v*100).toFixed(1),ideal:{M:.08,F:.08},lin:[.08,.2],w:.8,grp:"skin",
+  lines:{name:"Fine lines",fmt:v=>(v*100).toFixed(1),ideal:{M:.08,F:.08},lin:[.08,.2],w:0.6,grp:"skin",
     src:"Skin age cues (Fink et al. 2001; Samson et al. 2010)",
     what:"Fine texture next to the eyes, where crow's feet start.",
     bad:["SPF every day is the strongest anti-aging step there is.","A retinoid at night; moisturizer and eye cream morning and night.","Wear sunglasses outside so you stop squinting; don't smoke; sleep 7 to 9 hours."]},
 };
+const SHAPE_PTS=[10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109,
+  70,63,105,66,107,55,65,52,53,46,300,293,334,296,336,285,295,282,283,276,
+  33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7,263,466,388,387,386,385,384,398,362,382,381,380,374,373,390,249,
+  168,6,197,195,5,4,1,2,98,327,129,358,64,294,
+  61,185,40,39,37,0,267,269,270,409,291,375,321,405,314,17,84,181,91,146,13,14,
+  50,280,205,425,123,352];
 const AVG = {"KEY":[10,152,234,454,172,397,58,288,33,133,362,263,159,145,386,374,70,105,107,300,334,336,1,2,129,358,168,61,291,0,13,14,17,50,280,136,365,148,377,93,323,127,356,9,151,4,6,200],"REF":[[0.0,-0.8945],[0.0,1.9085],[-1.2161,0.3096],[1.2161,0.3096],[-0.9426,1.404],[0.9426,1.404],[-1.0662,1.1763],[1.0662,1.1763],[-0.7054,-0.0062],[-0.2946,0.0062],[0.2946,0.0062],[0.7054,-0.0062],[-0.5041,-0.0539],[-0.5041,0.0524],[0.5041,-0.0539],[0.5041,0.0524],[-0.9078,-0.2586],[-0.6326,-0.3943],[-0.2214,-0.3788],[0.9078,-0.2586],[0.6326,-0.3943],[0.2214,-0.3788],[0.0,0.5953],[0.0,0.7479],[-0.2834,0.5717],[0.2834,0.5717],[0.0,-0.1026],[-0.3897,1.1055],[0.3897,1.1055],[0.0,0.957],[0.0,1.0503],[0.0,1.1372],[0.0,1.2678],[-0.7562,0.5278],[0.7562,0.5278],[-0.8069,1.5555],[0.8069,1.5555],[-0.2052,1.8915],[0.2052,1.8915],[-1.1967,0.5829],[1.1967,0.5829],[-1.2286,0.0412],[1.2286,0.0412],[0.0,-0.3588],[0.0,-0.6221],[0.0,0.4899],[0.0,0.024],[0.0,1.5258]]};
 const GROUPS = {prop:"Proportions",sym:"Symmetry and averageness",feat:"Eyes, brows and lips",hair:"Hair and brows",skin:"Skin"};
 
@@ -452,6 +459,10 @@ async function handleFile(file){
 $("camIn").onchange = e => { handleFile(e.target.files[0]); e.target.value=""; };
 $("fileIn").onchange = e => { handleFile(e.target.files[0]); e.target.value=""; };
 window.__analyzeFile = handleFile;
+window.__features = async blob => { const lmk=await getModel(); const bmp=await createImageBitmap(blob);
+  const s=Math.min(1,1400/Math.max(bmp.width,bmp.height)); const c=document.createElement("canvas"); c.width=Math.round(bmp.width*s); c.height=Math.round(bmp.height*s);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height); const out=lmk.detect(c); if(!out.faceLandmarks?.length) return null;
+  const r=analyze(c,out.faceLandmarks[0],out.faceBlendshapes?.[0]?.categories||[]); return {v:r.v,nc:r.nc}; };
 
 function analyze(c, L, bs){
   const W=c.width,H=c.height;
@@ -586,7 +597,8 @@ function analyze(c, L, bs){
       if (v.upper<.5||v.upper>1.8){ delete v.upper; trich=null; hairNote="Hairline edge was unclear in this photo."; }
     } else hairNote="No clear hairline edge found (bald, very light hair, or hair out of frame).";
   }
-  return {v,warns,hairNote,trich:trich?[trich[0]/k+sx,trich[1]/k+sy]:null,P,th};
+  const nc=[]; { const c0=[(eR[0]+eL[0])/2,(eR[1]+eL[1])/2]; for (const i of SHAPE_PTS) nc.push((R[i][0]-c0[0])/ipd,(R[i][1]-c0[1])/ipd); }
+  return {nc,v,warns,hairNote,trich:trich?[trich[0]/k+sx,trich[1]/k+sy]:null,P,th};
 }
 
 /* ---------- scoring ---------- */
@@ -596,12 +608,26 @@ function scoreOf(key,val){
   if (key==="sym"){ const d=Math.max(0,val-.012); return 10*Math.exp(-.5*(d/m.th)**2); }
   const d=val-id, tol=d<0?m.tl:m.th; return 10*Math.exp(-.5*(d/tol)**2);
 }
+/* Score learned from 5,500 faces rated by 60 people each (SCUT-FBP5500), ridge regression on this app's own measurements.
+   5-fold cross-validated correlation with human ratings: 0.77. */
+const SCORE_MODEL = {"keys":["avg","brow","browArch","browD","browTail","contrast","eyeMo","eyeO","eyeSp","fifths","fwhr","icd","iris","jaw","lash","lean","lines","lipC","lipF","lipR","lower","mouth","mouthIpd","nose","noseL","sclera","shape","shine","skin","sym","thirds","tilt","tone","under","upper"],"med":[0.094733,0.708907,0.241012,0.771366,0.174841,0.376721,0.429558,0.346782,0.439321,0.189346,1.71755,1.330064,0.470514,0.787373,0.493486,3.613655,0.022471,13.370929,0.313009,1.697701,0.486242,1.258664,0.829704,1.159792,0.308373,7.675029,1.171122,0.0,0.005297,0.056154,1.083867,10.068376,0.063844,0.930255,0.752257],"nNc":0,"mean":[0.100451,0.702423,0.239546,0.777958,0.171477,0.376952,0.4299,0.346188,0.441051,0.19055,1.719219,1.328362,0.471643,0.787364,0.499985,3.618969,0.024982,13.809362,0.308619,1.771257,0.4828,1.27757,0.857824,1.173125,0.308417,8.050506,1.172568,0.000484,0.007204,0.09676,1.099758,9.845958,0.102948,0.915403,0.758569,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.176364,0.5],"scale":[0.033774,0.11356,0.032479,0.156256,0.108224,0.104647,0.01618,0.049742,0.022344,0.011977,0.115183,0.113891,0.015243,0.025655,0.186825,0.027157,0.011566,6.81346,0.073471,0.366866,0.074384,0.11729,0.11771,0.093488,0.016756,4.946541,0.052343,0.004122,0.006371,0.103521,0.152104,2.747423,0.112685,0.109968,0.133673,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.381129,0.5],"coef":[-0.082049,-0.079051,-0.070451,-0.07656,-0.151648,-0.015609,-0.023224,0.020994,-0.071971,0.020294,-0.209542,-0.121949,0.059319,-0.153758,-0.108429,0.105858,0.051603,0.06814,0.037677,-0.066411,-0.231863,0.094806,-0.034949,-0.178973,-0.000977,-0.014895,-0.055169,-0.013892,-0.067241,0.036191,-0.000296,-0.033593,0.08242,0.009917,-0.022386,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.039368,0.114196],"b":2.9908909116363427,"dist":{"M":[2.905,0.65],"F":[3.077,0.714]}};
+function learnedRating(res){
+  const m=SCORE_MODEL, x=[];
+  for (let i=0;i<m.keys.length;i++){ const val=res.v[m.keys[i]]; x.push(val!=null&&isFinite(val)?val:m.med[i]); }
+  for (let i=0;i<m.nNc;i++) x.push(res.nc[i]);
+  for (let i=0;i<m.keys.length;i++){ const val=res.v[m.keys[i]]; x.push(val!=null&&isFinite(val)?0:1); }
+  x.push(sex==="M"?1:0);
+  let pred=m.b; for (let i=0;i<x.length;i++){ const z=Math.max(-4,Math.min(4,(x[i]-m.mean[i])/m.scale[i])); pred+=z*m.coef[i]; }
+  const [mu,sd]=m.dist[sex]; const z=(pred-mu)/sd;
+  return Math.round(Math.max(.5,Math.min(9.9,5+1.75*z))*10)/10;
+}
 function rateFrom(items, ai, full){
   const g={}; for (const it of items){ const gr=M[it.k].grp; (g[gr]??={sw:0,w:0}); g[gr].sw+=it.s*M[it.k].w; g[gr].w+=M[it.k].w; }
   const gs=Object.fromEntries(Object.entries(g).map(([a,o])=>[a,o.sw/o.w]));
   const geo=(gs.prop*3+ (gs.sym??gs.prop)*1.5 + (gs.feat??gs.prop)*1.5)/6;
   const loc=["hair","skin"].map(x=>gs[x]).filter(x=>x!=null); let vis=loc.length?loc.reduce((a,b)=>a+b,0)/loc.length:geo;
   if (ai && isFinite(+ai.overall_visual)) vis = .3*vis + .7*Math.max(0,Math.min(10,+ai.overall_visual));
+  const raw=.6*geo+.4*vis;
   const rating=Math.round(Math.max(0,Math.min(10,10*((.6*geo+.4*vis)/10)**1.6))*10)/10;
   return full ? {gs, rating} : rating;
 }
@@ -610,10 +636,12 @@ function tierOf(r){ return r>=8.5?"Top tier":r>=7.5?"Very attractive":r>=6.5?"At
 function render(){
   const {res,ai}=last; const items=[];
   for (const [k,val] of Object.entries(res.v)) if (M[k]&&isFinite(val)) items.push({k,val,s:scoreOf(k,val)});
-  const {gs, rating} = rateFrom(items, ai, true);
+  const {gs} = rateFrom(items, ai, true);
+  let rating = learnedRating(last.res);
+  if (ai && isFinite(+ai.overall_visual)) rating = Math.round((.75*rating + .25*Math.max(0,Math.min(10,+ai.overall_visual)))*10)/10;
   $("bigScore").innerHTML=rating.toFixed(1)+"<small>/10</small>";
   $("tier").textContent=tierOf(rating);
-  $("scoreNote").textContent = ai ? "Includes the visual review. 5 is the average person; each point above 7 is rare." : "5 is the average person; each point above 7 is rare. Run the visual review for hair, lashes and skin judged by eye.";
+  $("scoreNote").textContent = ai ? "Learned from 5,500 human-rated faces, plus the visual review. 5 is the average person; above 7 is rare." : "Score learned from 5,500 faces rated by real people. 5 is the average person; above 7 is rare. Run the visual review for hair, lashes and skin judged by eye.";
   const w=$("warns"); w.replaceChildren(...res.warns.map(t=>{const d=document.createElement("div");d.className="warnbox";d.textContent=t;return d}));
   const bars=[...Object.entries(gs).map(([a,s])=>[GROUPS[a],s])]; if (ai&&isFinite(+ai.overall_visual)) bars.push(["Visual review",+ai.overall_visual]);
   $("bars").replaceChildren(...bars.map(([n,s])=>{const d=document.createElement("div");d.className="bar";
@@ -695,7 +723,7 @@ function buildPlan(items, rating, ai){
   const lean = has("jaw")||has("shape")||has("thirds")||has("lean");
   const tl = need.map(n=>({n, w:WEEKS[n.k]||[4,8,.3]})).sort((a,b)=>a.w[1]-b.w[1]);
   const potItems = items.map(it=>{ const w=WEEKS[it.k]; return w&&it.s<8 ? {...it, s:it.s+(10-it.s)*w[2]} : it; });
-  const potential = Math.max(rating, rateFrom(potItems, ai));
+  const potential = Math.min(9.9, Math.max(rating, Math.round((rating + rateFrom(potItems, ai) - rateFrom(items, ai))*10)/10));
   const maxW = tl.length ? Math.max(...tl.map(x=>x.w[1])) : 0;
   const months = w=>w<=4?`${w} weeks`:`${Math.round(w/4.3)} months`;
   const timeline = [];
